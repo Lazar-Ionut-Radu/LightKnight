@@ -6,6 +6,7 @@
 #include <array>
 #include <iostream>
 #include <tuple>
+#include <cassert>
 
 namespace lightknight {
     inline constexpr size_t kNumSquares = 64;
@@ -53,6 +54,15 @@ namespace lightknight {
     };
     static constexpr uint8_t kCastlesByColor[2] = {3, 12};
     
+    // Pieces and colors.
+    inline constexpr Color OppositeColor(Color color) { return static_cast<Color>(static_cast<uint8_t>(color) ^ 1); }
+    inline constexpr Color GetPieceColor(Piece piece) {
+        assert(piece != kEmpty);
+
+        return piece <= kWhiteKing
+            ? kWhite
+            : kBlack;
+    }
     
     // File / rank bitboard masks.
     static constexpr uint64_t kFileA = 0x0101010101010101ULL;
@@ -126,6 +136,17 @@ namespace lightknight {
     };
     std::ostream& operator<<(std::ostream& os, lightknight::PromotionPieceType piece);
 
+    inline constexpr Piece GetPiece(
+        Color color,
+        PromotionPieceType promotion_piece_type
+    ) {
+        return static_cast<Piece>(
+            static_cast<std::uint8_t>(color) * 6
+            + 1
+            + (static_cast<std::uint16_t>(promotion_piece_type) >> 12)
+        );
+    }
+
     enum MoveType : uint16_t {
         kNormal,
         kPromotion = 1 << 14,
@@ -173,6 +194,14 @@ namespace lightknight {
     // Debug
     void PrintBitboard(uint64_t bitboard);
     
+    typedef struct UndoMoveInfo {
+        Piece captured_piece = Piece::kEmpty;
+        uint8_t castling = 0;
+        uint64_t en_passant = 0;
+        int halfmoves = 0;
+        int fullmoves = 0;
+    } UndoMoveInfo;
+
 }; // namespace lightknight
 
 #endif //LIGHTKNIGHT_TYPES_H

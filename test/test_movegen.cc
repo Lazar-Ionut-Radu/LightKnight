@@ -10,7 +10,10 @@
 #include <ranges>
 #include <string>
 
-TEST_CASE("Sliding Piece Relevant Occupacy (for magic bitboards generation)", "[UnitTest][MoveGeneration][MagicBitboards]") {
+TEST_CASE(
+    "Sliding Piece Relevant Occupacy (for magic bitboards generation)",
+    "[UnitTest][Move][MoveGen][MagicBitboards]"
+) {
     SECTION("Bishop") {
         static const std::array<std::pair<lightknight::Square, uint64_t>, 10> bishop_tests = {
             std::make_pair(lightknight::Square::A1, 0x40201008040200ULL),
@@ -50,7 +53,10 @@ TEST_CASE("Sliding Piece Relevant Occupacy (for magic bitboards generation)", "[
     }
 }
 
-TEST_CASE("Precomputed Attack Bitboards", "[UnitTest][MoveGeneration][MagicBitboards]") {
+TEST_CASE(
+    "Precomputed Attack Bitboards",
+    "[UnitTest][Move][MoveGen][MagicBitboards]"
+) {
     SECTION("Pawn") {
         static const std::array<std::tuple<lightknight::Square, lightknight::Color, uint64_t>, 8> pawn_tests = {
             std::make_tuple(lightknight::Square::C2, lightknight::Color::kWhite, 0xa0000ULL),
@@ -188,7 +194,10 @@ struct MoveGenerationTestStruct {
     std::vector<lightknight::Move> expected_moves;
 };
 
-TEST_CASE("Generate Move" "[UnitTest][MoveGeneration]") {
+TEST_CASE(
+    "Generate Move"
+     "[UnitTest][Move][MoveGen]"
+) {
     SECTION("Pawn Moves") {
         static const std::array<MoveGenerationTestStruct, 12> pawn_tests = {{
             { // White pawn pushes, 1 or 2 squares, no pins.

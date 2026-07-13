@@ -25,14 +25,30 @@ namespace lightknight {
 
     std::ostream& operator<<(std::ostream& os, const lightknight::Move& move)
     {
+        // Small func to get square str
+        const auto PrintSquare = [&os](lightknight::Square square) {
+            const auto value = static_cast<std::uint8_t>(square);
+
+            os << static_cast<char>('a' + value % 8)
+            << static_cast<char>('1' + value / 8);
+        };
+
+        PrintSquare(move.GetOriginSquare());
+        PrintSquare(move.GetDestinationSquare());
+        
         const auto from = move.GetOriginSquare();
         const auto to   = move.GetDestinationSquare();
 
-        os << from << to;
+        if (move.GetMoveType() == lightknight::MoveType::kPromotion) {
+            constexpr char promotion_chars[] = {'n', 'b', 'r', 'q'};
 
-            if (move.GetMoveType() == MoveType::kPromotion) {
-                os << "=" << move.GetPromotionPieceType();
-            }
+            const auto promotion_index =
+                static_cast<std::uint16_t>(
+                    move.GetPromotionPieceType()
+                ) >> 12;
+
+            os << promotion_chars[promotion_index];
+        }
 
         return os;
     }
