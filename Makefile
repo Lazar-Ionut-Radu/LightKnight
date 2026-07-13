@@ -9,6 +9,7 @@ SRC := $(wildcard src/*.cc)
 SRC_ENGINE := $(wildcard src/*.cc) # engine files
 SRC_TEST := $(filter-out src/main.cc,$(SRC))  # engine files for tests (exclude main.cc)
 TEST_SRC := $(wildcard test/*.cc)      # Catch2 tests + test main
+TEST_ARGS ?=
 
 # Object files
 OBJ_ENGINE := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(SRC_ENGINE))
@@ -36,7 +37,16 @@ $(TEST_EXE): $(OBJ_TEST)
 
 # Run tests
 test: $(TEST_EXE)
-	./$(TEST_EXE)
+	./$(TEST_EXE) $(TEST_ARGS)
+
+test-list: $(TEST_EXE)
+	./$(TEST_EXE) --list-tests
+
+test-verbose: $(TEST_EXE)
+	./$(TEST_EXE) --success
+
+test-help: $(TEST_EXE)
+	./$(TEST_EXE) --help
 
 # Clean build directory
 clean:
