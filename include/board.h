@@ -4,45 +4,18 @@
 #include <cstdint>
 #include <array>
 #include <string>
+#include <vector>
+#include "types.h"
 
-namespace lightknight::engine {
-    const size_t kNumPieces = 13;
-    enum class Pieces : uint8_t {
-        kWhitePawn = 0,
-        kWhiteKnight,
-        kWhiteBishop,
-        kWhiteRook,
-        kWhiteQueen,
-        kWhiteKing,
-        kBlackPawn,
-        kBlackKnight,
-        kBlackBishop,
-        kBlackRook,
-        kBlackQueen,
-        kBlackKing,
-        kEmpty
-    };
-
-    const size_t kNumColors = 2;
-    enum class Colors : uint8_t {
-        kWhite = 0,
-        kBlack
-    };
-
-    const size_t kNumCastles = 4;
-    enum class Castles : uint8_t {
-        kWhiteQueenSide = 1 << 0,
-        kWhiteKingSide = 1 << 1,
-        kBlackQueenSide = 1 << 2,
-        kBlackKingSide = 1 << 3
-    };
-
+namespace lightknight {
     class Board {
     public:
         // Array of bitboards, one for each piece type, specifying their positions on the table.
-        std::array<uint64_t, kNumPieces> bitboards;
+        std::array<uint64_t, kNumPieces> piece_bitboards;
+        std::array<uint64_t, kNumColors> color_bitboards;
+
         uint8_t castling;
-        lightknight::engine::Colors turn;
+        lightknight::Color turn;
         // Specifies the target square (if any) an en passant capture can be done.
         uint64_t en_passant;
         // Counts the number of half moves (one side) since the last capture or pawn advancement.
@@ -62,15 +35,28 @@ namespace lightknight::engine {
 
         // Does not check the validity of the data, only for testing purposes.
         static Board FromRaw(
-            const std::array<uint64_t, kNumPieces>& bitboards,
-            Colors turn,
+            const std::array<uint64_t, kNumPieces>& piece_bitboards,
+            Color turn,
             uint8_t castling,
             int en_passant_square,
             int halfmoves,
             int fullmoves
         );
 
+        bool IsSquareAttacked(uint64_t square_bb, Color my_color) const;
+        bool IsInCheck(Color color) const;
+        bool IsCheckMate(std::vector<lightknight::Move> &moves) const;
+        bool IsStaleMate(std::vector<lightknight::Move> &moves) const;
+
+        lightknight::Piece GetPiece(uint64_t square_bb);
+        void MovePiece(uint64_t from, uint64_t to);
+        void PutPiece(lightknight::Piece piece, uint64_t sq);
+        void RemovePiece(uint64_t sq);
+
+        void UpdateCastlingRights(uint64_t from, uint64_t to);
+        void MakeMove(lightknight::Move move, lightknight::UndoMoveInfo& undo);
+        void UnmakeMove(lightknight::Move move, const lightknight::UndoMoveInfo& undo);
     };
-} // namespace lightknight::engine
+} // namespace lightknight
 
 #endif // LIGHTKNIGHT_BOARD_H
