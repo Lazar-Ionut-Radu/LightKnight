@@ -27,14 +27,14 @@ namespace lightknight::movegen {
             SquareToBitboard(Square::E1), SquareToBitboard(Square::C1), 
             SquareToBitboard(Square::A1), SquareToBitboard(Square::D1),
             SquareToBitboard(Square::B1) | SquareToBitboard(Square::C1) | SquareToBitboard(Square::D1),
-            SquareToBitboard(Square::C1) | SquareToBitboard(Square::D1)
+            SquareToBitboard(Square::C1) | SquareToBitboard(Square::D1) | SquareToBitboard(Square::E1)
         },
         // White King Side Castle - 2
         {
             SquareToBitboard(Square::E1), SquareToBitboard(Square::G1), 
             SquareToBitboard(Square::H1), SquareToBitboard(Square::F1),
             SquareToBitboard(Square::F1) | SquareToBitboard(Square::G1),
-            SquareToBitboard(Square::F1) | SquareToBitboard(Square::G1)
+            SquareToBitboard(Square::F1) | SquareToBitboard(Square::G1) | SquareToBitboard(Square::E1)
         }, 
         {}, // unused
         // BLack Queen Side Castle - 4
@@ -42,7 +42,7 @@ namespace lightknight::movegen {
             SquareToBitboard(Square::E8), SquareToBitboard(Square::C8), 
             SquareToBitboard(Square::A8), SquareToBitboard(Square::D8),
             SquareToBitboard(Square::B8) | SquareToBitboard(Square::C8) | SquareToBitboard(Square::D8),
-            SquareToBitboard(Square::C8) | SquareToBitboard(Square::D8)
+            SquareToBitboard(Square::C8) | SquareToBitboard(Square::D8) | SquareToBitboard(Square::E8)
         }, 
         {}, {}, {}, // unused
         // King Side Castle - 8
@@ -50,7 +50,7 @@ namespace lightknight::movegen {
             SquareToBitboard(Square::E8), SquareToBitboard(Square::G8), 
             SquareToBitboard(Square::H8), SquareToBitboard(Square::F8),
             SquareToBitboard(Square::F8) | SquareToBitboard(Square::G8),
-            SquareToBitboard(Square::F8) | SquareToBitboard(Square::G8)
+            SquareToBitboard(Square::F8) | SquareToBitboard(Square::G8) | SquareToBitboard(Square::E8)
         },
         {}, {}, {}, {}, {}, {}, {} // unused
     };

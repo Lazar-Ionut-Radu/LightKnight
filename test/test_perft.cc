@@ -20,6 +20,7 @@ struct PerftTest {
     std::vector<std::uint64_t> nodes;
 };
 
+// Thanks to https://www.chessprogramming.org/Perft_Results.
 const std::vector<PerftTest> kPerftTests = {
     {
         "Initial position",
@@ -193,7 +194,7 @@ void PrintPerftBenchmarkTable(
 ) {
     std::cout
         << '\n'
-        << name << '\n'
+        << name << ": " << fen << '\n'
         << std::left
         << std::setw(8)  << "Depth"
         << std::setw(18) << "Nodes"
@@ -246,8 +247,21 @@ TEST_CASE(
 ) {
     PrintPerftBenchmarkTable(
         "Starting position",
-        "rnbqkbnr/pppppppp/8/8/8/8/"
-        "PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        6,
+        4
+    );
+
+    PrintPerftBenchmarkTable(
+        "Endgame position",
+        "8/5p2/k3r1p1/P6p/5K1P/6P1/R4P2/8 w - - 16 65",
+        6,
+        4
+    );
+
+    PrintPerftBenchmarkTable(
+        "Midgame position",
+        "r1bq1rk1/2p1bppp/p1n2n2/1p1pp3/4P3/1BP2N2/PP1P1PPP/RNBQR1K1 w - d6 0 9",
         6,
         4
     );
