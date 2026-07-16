@@ -1,4 +1,4 @@
-// test_board.cc
+// test/test_board.cc
 #include <catch2/catch_test_macros.hpp>
 #include "board.h"
 #include "exceptions.h"

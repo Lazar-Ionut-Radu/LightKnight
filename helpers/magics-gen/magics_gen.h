@@ -1,5 +1,5 @@
-#ifndef LIGHTKNIGHT_MAGICS_GEN_H
-#define LIGHTKNIGHT_MAGICS_GEN_H
+#ifndef LIGHTKNIGHT_HELPERS_MAGICS_GEN_H
+#define LIGHTKNIGHT_HELPERS_MAGICS_GEN_H
 
 #include <cstdint>
 #include <vector>
@@ -38,4 +38,4 @@ void PrintMagicsArray(std::array<uint64_t, 64> &magics, const std::string var_na
 bool GenerateRookFixedShiftMagics(int shift, int n_attempts);
 bool GenerateBishopFixedShiftMagics(int shift, int n_attempts);
 
-#endif // LIGHTKNIGHT_MAGICS_GEN_H
+#endif // LIGHTKNIGHT_HELPERS_MAGICS_GEN_H

@@ -1,4 +1,4 @@
-// test_movegen.cc
+// test/test_movegen.cc
 #include <catch2/catch_test_macros.hpp>
 #include "movegen.h"
 #include "types.h"

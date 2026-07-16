@@ -1,4 +1,4 @@
-// test_bitboard.cc
+// test/test_bitboard.cc
 #include <catch2/catch_test_macros.hpp>
 #include <array>
 #include <types.h>

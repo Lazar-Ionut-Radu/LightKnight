@@ -1,5 +1,5 @@
-#ifndef LIGHTKNIGHT_PERFT_DEBUG_H
-#define LIGHTKNIGHT_PERFT_DEBUG_H
+#ifndef LIGHTKNIGHT_HELPERS_PERFT_DEBUG_H
+#define LIGHTKNIGHT_HELPERS_PERFT_DEBUG_H
 
 #include <cstdint>
 #include <string>
@@ -45,4 +45,4 @@ bool TraceFirstPerftDiscrepancy(
     int depth
 );
 
-#endif // LIGHTKNIGHT_PERFT_DEBUG_H
+#endif // LIGHTKNIGHT_HELPERS_PERFT_DEBUG_H
