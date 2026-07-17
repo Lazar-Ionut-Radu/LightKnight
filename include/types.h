@@ -163,7 +163,8 @@ namespace lightknight {
         uint16_t data;
 
         // Constructors
-        constexpr explicit Move(uint16_t data) : data(data) {};
+        constexpr Move() : data(0) {}
+        constexpr explicit Move(uint16_t data) : data(data) {}
 
         constexpr Move(Square origin, Square destination, PromotionPieceType promotionPieceType = PromotionPieceType::kKnight, MoveType moveType = MoveType::kNormal)
             : data(origin + (destination << 6) + promotionPieceType + moveType) {}
@@ -172,6 +173,8 @@ namespace lightknight {
         static constexpr Move Make(Square origin, Square destination, PromotionPieceType promotionPieceType = PromotionPieceType::kKnight, MoveType moveType = MoveType::kNormal) {
             return Move(origin + (destination << 6) + promotionPieceType + moveType); 
         };
+
+        constexpr bool IsNull() const { return data == 0; }
 
         // Operator overloads
         constexpr bool operator==(const Move& move) const { return data == move.data; }

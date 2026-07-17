@@ -6,7 +6,7 @@
 
 namespace lightknight::eval {
     int EvaluateMaterial(lightknight::Board& board) {
-        uint64_t eval = 0;
+        int eval = 0;
 
         for (size_t piece = 0; piece < lightknight::kNumPieces - 1; ++piece) {
             eval += kPieceValues[piece] * SetBitsCount(board.piece_bitboards[piece]);
@@ -16,6 +16,10 @@ namespace lightknight::eval {
     }
 
     int Evaluate(lightknight::Board& board) {
-        return EvaluateMaterial(board);    
+        const int white_relative_score = EvaluateMaterial(board);
+        
+        return board.turn == lightknight::Color::kWhite
+            ? white_relative_score
+            : -white_relative_score;
     }
 } // namespace lightknight::eval
