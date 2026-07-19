@@ -21,7 +21,7 @@ namespace lightknight {
             std::vector<Move> &moves = move_lists[ply];
             moves.clear();
 
-            const size_t move_count = lightknight::movegen::GenerateMoves(board, moves);
+            const size_t move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
             uint64_t nodes = 0;
 
             for (size_t idx = 0; idx < move_count; ++idx) {

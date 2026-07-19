@@ -327,7 +327,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GeneratePawnMoves(board, moves);
+                lightknight::movegen::GeneratePawnMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -387,7 +387,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GenerateKnightMoves(board, moves);
+                lightknight::movegen::GenerateKnightMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -433,7 +433,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GenerateBishopMoves(board, moves);
+                lightknight::movegen::GenerateBishopMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -471,7 +471,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GenerateRookMoves(board, moves);
+                lightknight::movegen::GenerateRookMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -517,7 +517,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GenerateQueenMoves(board, moves);
+                lightknight::movegen::GenerateQueenMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -572,7 +572,7 @@ TEST_CASE(
                 lightknight::Board board = lightknight::Board(fen_str);
 
                 std::vector<lightknight::Move> moves;
-                lightknight::movegen::GenerateKingMoves(board, moves);
+                lightknight::movegen::GenerateKingMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
                 TestEqualMoveLists(moves, expected_moves);
             }

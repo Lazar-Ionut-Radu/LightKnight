@@ -69,7 +69,7 @@ namespace lightknight::search {
         // Generate moves
         std::vector<lightknight::Move>& moves = move_lists[depth];
         moves.clear();
-        const size_t move_count = lightknight::movegen::GenerateMoves(board, moves);
+        const size_t move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
         // Base case, no moves in position. Either checkmate or stalemate.
         if (move_count == 0) {
