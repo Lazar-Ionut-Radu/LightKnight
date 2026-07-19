@@ -109,6 +109,11 @@ namespace lightknight {
         46, 26, 40, 15, 34, 20, 31, 10,
         25, 14, 19, 9, 13,  8,  7,  6
     };
+
+    constexpr Square MirrorVertically(Square square) {
+        return static_cast<Square>(static_cast<int>(square) ^ 56);
+    }
+    
     // Expects the bitboard to only have one set bit, to be a power of 2.
     inline Square BitboardToSquare(uint64_t bitboard) {return (Square)(kDeBruije[(bitboard * kDeBruijeMagic) >> 58]);}
     constexpr uint64_t SquareToBitboard(Square square) { return (1ULL << square);}

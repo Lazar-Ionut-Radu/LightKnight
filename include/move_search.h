@@ -32,13 +32,26 @@ namespace lightknight::search {
     };
 
     struct SearchStats {
+        uint64_t search_nodes = 0;
+        uint64_t q_nodes = 0;
         uint64_t leaf_nodes = 0;
-        uint64_t inner_nodes = 0;
+
+        uint64_t pv_nodes = 0;
+        uint64_t cut_nodes = 0;
+        uint64_t all_nodes = 0;
+
+        uint64_t q_pv_nodes = 0;
+        uint64_t q_cut_nodes = 0;
+        uint64_t q_all_nodes = 0;
+        
+        uint64_t evaluations = 0;
         uint64_t beta_cutoffs = 0;
+
+        int depth_searched = 0;
         double elapsed_ms = 0.0;
 
         constexpr uint64_t total_nodes() const {
-            return leaf_nodes + inner_nodes;
+            return search_nodes + q_nodes;
         }
 
         constexpr double mnps() const {
@@ -65,6 +78,18 @@ namespace lightknight::search {
         int alpha,
         int beta,
         int max_depth,
+        int depth,
+        PrincipalVariation& pv,
+        TimeControlStruct& time_control,
+        SearchStats& stats
+    );
+
+    template<bool collect_stats>
+    int Quiescence(
+        lightknight::Board& board,
+        std::vector<std::vector<lightknight::Move>>& move_lists,
+        int alpha,
+        int beta,
         int depth,
         PrincipalVariation& pv,
         TimeControlStruct& time_control,
