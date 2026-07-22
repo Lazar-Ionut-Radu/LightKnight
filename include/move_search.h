@@ -6,6 +6,7 @@
 
 #include "types.h"
 #include "board.h"
+#include "transposition_table.h"
 
 namespace lightknight::search {
     inline constexpr int kInfinity = 128'000;
@@ -29,6 +30,11 @@ namespace lightknight::search {
 
         // Has the time allocated elapsed.
         bool stopped = false;
+    };
+
+    enum class SearchNodeType : bool {
+        kPVNode,
+        kNonPVNode
     };
 
     struct SearchStats {
@@ -70,37 +76,36 @@ namespace lightknight::search {
     };
 
     bool ShouldStopSearch(TimeControlStruct& time_control);
-
-    template<bool collect_stats>
-    int AlphaBeta(
-        lightknight::Board& board,
-        std::vector<std::vector<lightknight::Move>>& move_lists,
-        int alpha,
-        int beta,
-        int max_depth,
-        int depth,
-        PrincipalVariation& pv,
-        TimeControlStruct& time_control,
-        SearchStats& stats
-    );
-
-    template<bool collect_stats>
-    int Quiescence(
-        lightknight::Board& board,
-        std::vector<std::vector<lightknight::Move>>& move_lists,
-        int alpha,
-        int beta,
-        int depth,
-        PrincipalVariation& pv,
-        TimeControlStruct& time_control,
-        SearchStats& stats
-    );
-
-    template<bool collect_stats>
-    SearchResult IterativeDeepening(
+    
+    
+    int IterativeDeepening(
         Board& board,
         int max_depth,
-        int time_limit_ms
+        TranspositionTable& tt,
+        int time_limit_ts
+    );
+    
+    template<SearchNodeType node_type>
+    int PrincipalVariationSearch(
+        Board& board,
+        int alpha, // The best (highest) score this player can guarantee so far.
+        int beta, // The best (lowest) score the opponent can guarantee so far.
+        int max_depth, // Max search depth.
+        int depth, // Current depth.
+        std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        TranspositionTable& tt, // Memoization of positions.
+        TimeControlStruct& time_control
+    );
+
+    template<SearchNodeType node_type>
+    int QuiescenceSearch(
+        Board& board,
+        int alpha, // The best (highest) score this player can guarantee so far.
+        int beta, // The best (lowest) score the opponent can guarantee so far.
+        int depth,
+        std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        TranspositionTable& tt,
+        TimeControlStruct& time_control
     );
 
 } // namespace lightknight::search

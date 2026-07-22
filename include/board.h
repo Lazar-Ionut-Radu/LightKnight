@@ -25,6 +25,8 @@ namespace lightknight {
         // black's move.
         int fullmoves;
 
+        uint64_t zobrist_hash = 0ULL;
+
         // Constructors
         Board();
         explicit Board(const std::string& fen);
@@ -43,19 +45,25 @@ namespace lightknight {
             int fullmoves
         );
 
+        uint64_t ComputeZobristHash() const;
+        void XorEnPassantHash(uint64_t ep);
+
         bool IsSquareAttacked(uint64_t square_bb, Color my_color) const;
         bool IsInCheck(Color color) const;
         bool IsCheckMate(std::vector<lightknight::Move> &moves) const;
         bool IsStaleMate(std::vector<lightknight::Move> &moves) const;
 
-        lightknight::Piece GetPiece(uint64_t square_bb);
+        lightknight::Piece GetPiece(uint64_t square_bb) const;
         void MovePiece(uint64_t from, uint64_t to);
         void PutPiece(lightknight::Piece piece, uint64_t sq);
         void RemovePiece(uint64_t sq);
-
         void UpdateCastlingRights(uint64_t from, uint64_t to);
+        
         void MakeMove(lightknight::Move move, lightknight::UndoMoveInfo& undo);
         void UnmakeMove(lightknight::Move move, const lightknight::UndoMoveInfo& undo);
+    
+        bool IsCapture(Move move) const;
+        Piece GetCapturedPiece(Move move) const;
     };
 } // namespace lightknight
 

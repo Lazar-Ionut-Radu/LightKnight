@@ -11,7 +11,7 @@ namespace lightknight {
     struct ZobristHashes {
         uint64_t piece_square[12][64];
         uint64_t turn;
-        uint64_t castling[9];
+        uint64_t castling[16];
         uint64_t en_passant[64];
     };
 

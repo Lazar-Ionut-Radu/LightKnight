@@ -6,13 +6,34 @@
 #include <algorithm>
 #include <cstddef>
 #include <vector>
-
+#
 #include "board.h"
 #include "types.h"
 #include "eval.h"
 #include "movegen.h"
+#include "transposition_table.h"
 
 namespace lightknight::search {
+    int ScoreToTT(int score, int ply) {
+        if (score >= kMateScore - kMaxDepth)
+            return score + ply;
+
+        if (score <= -kMateScore + kMaxDepth)
+            return score - ply;
+
+        return score;
+    }
+
+    int ScoreFromTT(int score, int ply) {
+        if (score >= kMateScore - kMaxDepth)
+            return score - ply;
+
+        if (score <= -kMateScore + kMaxDepth)
+            return score + ply;
+
+        return score;
+    }
+
     bool ShouldStopSearch(TimeControlStruct& time_control) {
         // Clock was stopped before.
         if (time_control.stopped)
@@ -33,317 +54,53 @@ namespace lightknight::search {
         return false;
     }
 
-    // Alpha-Beta pruning algorithm, written in a negamax framework.
-    // Alpha = proven score lower-bound: This node has a move scoring at least alpha
-    // Beta = Cutoff inherited from the parent. A move scoring more than beta will not be reached
-    //        because the opponent's best move is on another branch. Node scores > beta are not
-    //        exact, because work is cut short when encountered.
-    // Keeps track of the principal variation PV.
-    template<bool collect_stats>
-    int AlphaBeta(
-        lightknight::Board& board,
-        std::vector<std::vector<lightknight::Move>>& move_lists, // Preallocated, clear is faster than allocating mem.
-        int alpha,
-        int beta,
-        int max_depth, 
-        int depth,
-        PrincipalVariation& pv,
-        TimeControlStruct& time_control,
-        SearchStats& stats
-    ) {
-        if (ShouldStopSearch(time_control))
-            return 0;
-
-        // Protect access to move_lists (should not happen but who knows)
-        // If depth limit was reached return the evaluation.
-        if (depth >= kMaxDepth || depth >= move_lists.size()) {
-            if constexpr (collect_stats) {
-                ++stats.search_nodes;
-                ++stats.leaf_nodes;
-                ++stats.evaluations;
-            }
-
-            return lightknight::eval::Evaluate(board);
-        }
+    int ScoreMove(Board& board, Move move, Move tt_move) {
+        static const int kPieceVals[12] = {100, 320, 330, 500, 900, 0, 100, 320, 330, 500, 900, 0};
         
-        // No pv known yet from this node.
-        pv.length[depth] = 0;
-        
-        // Base case, max depth reached.
-        if (depth >= max_depth) {
-            return Quiescence<collect_stats>(
-                board,
-                move_lists,
-                alpha,
-                beta,
-                depth,
-                pv,
-                time_control,
-                stats
-            );
+        if (move == tt_move)
+            return 5'000;
+
+        if (board.IsCapture(move)) {
+            const Piece attacker = board.GetPiece(move.GetOriginBitboard());
+            const Piece victim = board.GetCapturedPiece(move);
+
+            return kPieceVals[victim] - kPieceVals[attacker];
         }
 
-        if constexpr (collect_stats)
-            ++stats.search_nodes;
-        
-        // Generate moves
-        std::vector<lightknight::Move>& moves = move_lists[depth];
-        moves.clear();
-        const size_t move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
-
-        // Base case, no moves in position. Either checkmate or stalemate.
-        if (move_count == 0) {
-            if constexpr (collect_stats)
-                ++stats.leaf_nodes;
-            
-            return board.IsInCheck(board.turn)
-                ? -lightknight::search::kMateScore + depth // Mate found.
-                : 0;                                       // Stalemate.
-        }
-
-        // Search recursively.
-        int best_score = -lightknight::search::kInfinity;
-        int original_alpha = alpha;
-
-        for (std::size_t idx = 0; idx < move_count; ++idx) {
-            // Prepare for make/unmake move.
-            const lightknight::Move move = moves[idx];
-            lightknight::UndoMoveInfo undo{};
-
-            // Recurse
-            board.MakeMove(move, undo);
-            int score = -AlphaBeta<collect_stats>(
-                board,
-                move_lists, 
-                -beta, 
-                -alpha, 
-                max_depth, 
-                depth + 1, 
-                pv,
-                time_control,
-                stats
-            );
-            board.UnmakeMove(move, undo);
-            
-            // Check if the child node stopped. Important to do after restoring the board.
-            // A dummy score is returned, one that does not results (results that should 
-            // be discarded regardless)
-            if (time_control.stopped)
-                return 0; 
-
-            // Update best score found.
-            best_score = std::max(best_score, score);
-
-            // Found an improvement on that lower bound best score.
-            if (score > alpha) {
-                alpha = score;
-
-                // Move is now the first move of the best line from the current node.
-                pv.table[depth][0] = move;
-                
-                // Copy best continuation found by child node.
-                for (size_t i = 0; i < pv.length[depth + 1]; ++i) {
-                    pv.table[depth][i + 1] = pv.table[depth + 1][i];
-                }
-                pv.length[depth] = pv.length[depth + 1] + 1;
-            }
-            
-            // Cutoff, fail-high.
-            // Alpha is a lower bound on this node's true value. We have proven that this branch
-            // will not be taken, so its futile to compute the true value.
-            // Returning best_score makes this fail-soft.
-            if (alpha >= beta) {
-                if constexpr (collect_stats) {
-                    ++stats.cut_nodes;
-                    ++stats.beta_cutoffs;
-                }
-
-                return best_score;
-            }
-        }
-
-        if constexpr (collect_stats) {
-            if (best_score <= original_alpha)
-                ++stats.all_nodes;
-            else
-                ++stats.pv_nodes;
-        }
-
-        // If the result is inside the original (alpha, beta) window, then this is an exact score.
-        // If every result stayed below the original alpha then this is a fail-low and 
-        // best_score is only an upper bound on the real score.
-        return best_score;
+        return 0;
     }
 
-    template<bool collect_stats>
-    int Quiescence(
-        lightknight::Board& board,
-        std::vector<std::vector<lightknight::Move>>& move_lists,
-        int alpha,
-        int beta,
-        int depth,
-        PrincipalVariation& pv,
-        TimeControlStruct& time_control,
-        SearchStats& stats
-    ) {
-        if (ShouldStopSearch(time_control))
-            return 0;
+    void OrderMoves(Board& board, std::vector<Move>& moves, TTEntry* tt_entry) {
+        if (!tt_entry)
+            return;
 
-        if constexpr (collect_stats)
-            ++stats.q_nodes;
+        const Move tt_move = tt_entry->move;
 
-        // Protect access to move_lists (should not happen but who knows)
-        // If depth limit was reached return the evaluation
-        if (depth >= kMaxDepth || depth >= move_lists.size()) {
-            if constexpr (collect_stats) {
-                ++stats.leaf_nodes;
-                ++stats.evaluations;
+        for (size_t idx = 0; idx < moves.size(); ++idx) {
+            if (moves[idx] == tt_move) {
+                std::swap(moves.front(), moves[idx]);
+                return;
             }
-
-            return lightknight::eval::Evaluate(board);
         }
+    }
 
-        // No pv known yet for this node.
-        pv.length[depth] = 0;
-
-        // Generate tactical moves (or get out of check)
-        std::vector<lightknight::Move>& moves = move_lists[depth];
-        moves.clear();
-        size_t move_count = 0;
-        const bool is_in_check = board.IsInCheck(board.turn);
-        if (is_in_check) {
-            move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
-        } else {
-            move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kTactical>(board, moves);
-        }
-
-        // Base case.
-        if (move_count == 0) {
-            if constexpr (collect_stats)
-                ++stats.leaf_nodes;
-
-            // Checkmate.
-            if (is_in_check) {
-                return -lightknight::search::kMateScore + depth;
-            }
-
-            // Stalemate.
-            moves.clear();
-            if (lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kQuiet>(board, moves) == 0) {
-                return 0;
-            }
-
-            // Base-case eavl quiet pos.
-            if constexpr (collect_stats)
-                ++stats.evaluations;
-            return lightknight::eval::Evaluate(board);
-        }
-
-        int best_score;
-        int original_alpha = alpha;
-
-        // Standing pat
-        // Allow the search not to continue if subsequent captures lead to worse positions
-        if (!is_in_check) {
-            if constexpr (collect_stats)
-                ++stats.evaluations;
-
-            const int stand_pat = lightknight::eval::Evaluate(board);
-            best_score = stand_pat;
-
-            // Beta cutoff
-            if (stand_pat >= beta) {
-                if constexpr (collect_stats) {
-                    ++stats.q_cut_nodes;
-                    ++stats.beta_cutoffs;
-                }
-
-                return stand_pat;
-            }
-
-            if (stand_pat > alpha) {
-                alpha = stand_pat;
-            }
-        } else {
-            // no stand pat here, must get out of check.
-            best_score = -lightknight::search::kInfinity;
-        }
-        
-        // Recursive search
-        for (size_t idx = 0; idx < move_count; ++idx) {
-            // Prepare for make/unmake move.
-            const lightknight::Move move = moves[idx];
-            lightknight::UndoMoveInfo undo{};
-
-            // Recurse
-            board.MakeMove(move, undo);
-            int score = -Quiescence<collect_stats>(
-                board,
-                move_lists,
-                -beta,
-                -alpha,
-                depth + 1,
-                pv,
-                time_control,
-                stats
-            );
-            board.UnmakeMove(move, undo);
-
-            // Check if the child node stopped. Important to do after restoring the board.
-            // A dummy score is returned, one that does not results (results that should 
-            // be discarded regardless)
-            if (time_control.stopped)
-                return 0; 
-
-            // Update best score found.
-            best_score = std::max(best_score, score);
-
-            // Found an improvement on that lower bound best score.
-            if (score > alpha) {
-                alpha = score;
-
-                // Move is now the first move of the best line from the current node.
-                pv.table[depth][0] = move;
-                
-                // Copy best continuation found by child node.
-                for (size_t i = 0; i < pv.length[depth + 1]; ++i) {
-                    pv.table[depth][i + 1] = pv.table[depth + 1][i];
-                }
-                pv.length[depth] = pv.length[depth + 1] + 1;
-            }
-            
-            // Cutoff, fail-high.
-            if (alpha >= beta) {
-                if constexpr (collect_stats) {
-                    ++stats.q_cut_nodes;
-                    ++stats.beta_cutoffs;
-                }
-
-                return best_score;
-            }
-        } 
-
-        if constexpr (collect_stats) {
-            if (best_score <= original_alpha)
-                ++stats.q_all_nodes;
-            else
-                ++stats.q_pv_nodes;
-        }
-
-        return best_score;
-    };
-
-    template<bool collect_stats>
-    SearchResult IterativeDeepening(
+    
+    int IterativeDeepening(
         Board& board,
         int max_depth,
+        TranspositionTable& tt, 
         int time_limit_ms
     ) {
         // Clamp the depth so that it no bigger than the depth limit.
         const int target_max_depth = std::clamp(max_depth, 1, kMaxDepth);
-    
+
         // Avoid invalid negative durations.
         time_limit_ms = std::max(time_limit_ms, 0);
+
+        // Preallocate reusable vector for lists.
+        std::vector<std::vector<lightknight::Move>> move_lists(kMaxDepth);
+        for (std::vector<lightknight::Move>& moves : move_lists)
+            moves.reserve(256);
 
         // Time control struct.
         TimeControlStruct time_control{
@@ -352,72 +109,375 @@ namespace lightknight::search {
             .stopped = false
         };
 
-        // Reusable vector for lists (so that its allocated only once)
-        std::vector<std::vector<lightknight::Move>> move_lists(kMaxDepth);
-        for (std::vector<lightknight::Move>& moves : move_lists)
-            moves.reserve(256);
-        
-        // I should add a fallback if no AlphaBeta could be finished.
-        SearchResult result{};
-        
-        // The succesive searches
+        int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
-            PrincipalVariation pv{};
-            SearchStats stats{};
+            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, tt, time_control);
             
-            // Declaration for stats. 
-            std::chrono::steady_clock::time_point iter_start, iter_end;
-
-            if constexpr (collect_stats)
-                iter_start = std::chrono::steady_clock::now();
-            
-            const int score = AlphaBeta<collect_stats>(
-                board,
-                move_lists,
-                -kInfinity,
-                kInfinity,
-                to_depth,
-                0,
-                pv,
-                time_control,
-                stats
-            );
-            
-            if constexpr (collect_stats) {
-                iter_end = std::chrono::steady_clock::now();
-            }
-
-            // If time elapsed, don't save the invalid result and don't start other searches.
-            if (time_control.stopped) {
+            if (time_control.stopped)
                 break;
-            }
-            
-            // Update the result with the newest search.
-            result.evaluation = score;
-            result.pv_length = pv.length[0];
-            for (int i = 0; i < result.pv_length; ++i)
-                result.pv[i] = pv.table[0][i];
 
-            if constexpr (collect_stats) {
-                stats.elapsed_ms = std::chrono::duration<double, std::milli>(iter_end-iter_start).count();
-                result.stats = stats;
-                result.stats.depth_searched = to_depth;
-            }
+            result = score;
         }
-    
+
         return result;
     }
 
-    // Explicitly generate both versions in this translation unit.
-    template SearchResult IterativeDeepening<true>(
-        lightknight::Board&,
+    template<SearchNodeType node_type>
+    int PrincipalVariationSearch(
+        Board& board,
+        int alpha, // The best (highest) score this player can guarantee so far.
+        int beta, // The best (lowest) score the opponent can guarantee so far.
+        int max_depth, // Max search depth.
+        int depth, // Current depth.
+        std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        TranspositionTable& tt, // Memoization of positions.
+        TimeControlStruct& time_control
+    ) {
+        // Check if the allocated time elapsed.
+        // Also increment the variable that counts after how many function calls to inspect the
+        // clock.
+        if (ShouldStopSearch(time_control))
+            return 0;
+
+        // If we have reached the hard limit on depth that can be searched (unlikely) return
+        // immediately with a provisional evaluation
+        if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
+            return eval::Evaluate(board);
+        }
+
+        // Save for telling fail-low nodes (all nodes) from pv nodes later.
+        const int original_alpha = alpha;
+
+        // Check the transposition table to see if the position is already evaluated.
+        const uint64_t zobrist_hash = board.zobrist_hash; 
+        const uint8_t remaining_depth = max_depth - depth;
+        
+        TTEntry* tt_entry = tt.Probe(zobrist_hash);
+        if (tt_entry) {
+            // We consider only entries that are searched at a deeper depth.
+            if (tt_entry->depth >= remaining_depth) {
+                const int tt_score = ScoreFromTT(tt_entry->score, depth);
+                
+                // A score whose value is exactly known -> return.
+                if (tt_entry->bound == TTBound::Exact) {
+                    return tt_score;
+                }
+
+                // Beta cutoff, fail-high.
+                if (tt_entry->bound == TTBound::Lower && tt_score >= beta) {
+                    return tt_score;
+                }
+
+                // Fail low.
+                if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
+                    return tt_score;
+                }
+            }
+        }
+
+        // Base Case:
+        // Reaching the max depth of this search.
+        if (depth >= max_depth) {
+            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, tt, time_control);
+        }
+
+        // Generate moves.
+        // Use the move_lists to avoid expensive allocations at each function call.
+        std::vector<Move>& moves = move_lists[depth];
+        moves.clear();
+        const size_t move_count = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
+    
+        // Base Case:
+        // There are no legal moves in the position. Checkmate or Stalemate.
+        if (move_count == 0) {
+            const int score = board.IsInCheck(board.turn) ? -search::kMateScore + depth : 0;
+            return score;
+        }
+
+        // Move ordering: For now just puts the tt_move first, great pay-off tho.
+        OrderMoves(board, moves, tt_entry);
+
+        // Keep track of the best move of the children nodes.
+        int best_score = -search::kInfinity;
+        Move best_move{};
+
+        // Recursively seach the children nodes.
+        for (size_t idx = 0; idx < move_count; ++idx) {
+            // Prepare the needed stuff for {Make | Unamake}Move()
+            int score;
+            const Move move = moves[idx];
+            UndoMoveInfo undo{};
+
+            // The first move of a PVS is fully searched, with a full window.
+            // Under the assumption of a good move ordering, the first move searched should be
+            // one of the better moves, for which reason the subsequent moves will be initially
+            // searched with a zero-window (alpha, alpha + 1), to test if they provide an
+            // improvement. If they do, they are re-searched with a full-window.
+            // Re-searches should not be numerous given a good move ordering, the benefits of the
+            // faster zero-window searches will outweight the re-searches.
+            board.MakeMove(move, undo);
+            if (idx == 0) {
+                // Full search
+                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, tt, time_control);
+            } else {
+                // Zero-window search.
+                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, tt, time_control);
+                
+                // If the move was proven to give an improvement, re-search it will a full window.
+                // The node time constraint makes sure that we don't re-evaluate nodes that already
+                // have a null-window (that can be further down a subtree)
+                if (score > alpha && node_type == SearchNodeType::kPVNode)
+                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, tt, time_control);
+            }
+            board.UnmakeMove(move, undo);
+            
+            // Check if the allocated time elapsed. Important to do after restoring the board and
+            // before modifying the score, as a dummy score is returned here.
+            if (time_control.stopped)
+                return 0;
+
+            // Update the best score
+            if (score > best_score) {
+                best_score = score;
+                best_move = move;
+            }
+
+            // Update the alpha lower bound when finding the improvement.
+            if (score > alpha) {
+                alpha = score;
+            }
+
+            // Beta cutoff, fail-high.
+            // We found a move that's "too good", the opponent will not take this branch, they have
+            // a better move elsewhere in the tree. Return as to not waste time needlesly.
+            // The returned value is a lower-bound for the nodes true value.
+            if (alpha >= beta) {
+                // Store the result in the transposition table.
+                tt.Store(zobrist_hash, ScoreToTT(best_score, depth), remaining_depth, best_move, TTBound::Lower);
+                
+                return best_score; // Fail-soft.
+            }
+        }
+
+        TTBound bound;
+        // Fail-low. The move did not improve the position. It's result is an upper bound on its
+        // true score because it has a cut node child, a node that failed high.
+        if (best_score <= original_alpha) {
+            bound = TTBound::Upper;
+        } else {
+            bound = TTBound::Exact;
+        }
+        
+        // Store the result in the transposition table.
+        tt.Store(zobrist_hash, ScoreToTT(best_score, depth), remaining_depth, best_move, bound);
+
+        return best_score;
+    }
+
+    template<SearchNodeType node_type>
+    int QuiescenceSearch(
+        Board& board,
+        int alpha, // The best (highest) score this player can guarantee so far.
+        int beta, // The best (lowest) score the opponent can guarantee so far.
+        int depth,
+        std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        TranspositionTable& tt,
+        TimeControlStruct& time_control
+    ) {
+        // Check if the allocated time elapsed.
+        // Also increment the variable that counts after how many function calls to inspect the
+        // clock.
+        if (ShouldStopSearch(time_control))
+            return 0;
+
+        // If we have reached the hard limit on depth that can be searched (unlikely) return
+        // immediately with a provisional evaluation
+        if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
+            return eval::Evaluate(board);
+        }
+
+        // Save for telling fail-low nodes (all nodes) from pv nodes later.
+        const int original_alpha = alpha;
+
+        // Check the transposition table to see if the position is already evaluated.
+        const uint64_t zobrist_hash = board.zobrist_hash;
+        TTEntry* tt_entry = tt.Probe(zobrist_hash);
+        if (tt_entry) {
+            const int tt_score = ScoreFromTT(tt_entry->score, depth);
+
+            // We don't need to test the depth, nodes from Q search are considered depth 0 as far
+            // as the transposition table is concerned.
+            // Exact match, return
+            if (tt_entry->bound == TTBound::Exact) {
+                return tt_score;
+            }
+
+            // Fail high, beta cutoff.
+            if (tt_entry->bound == TTBound::Lower && tt_score >= beta)
+                return tt_score;
+
+            // Fail low.
+            if (tt_entry->bound == TTBound::Upper && tt_score <= alpha)
+                return tt_score;
+        }
+
+        // Generate moves.
+        std::vector<Move>& moves = move_lists[depth];
+        moves.clear();
+        size_t move_count;
+
+        // To decide what moves to generate, either all moves (to get out of check) or just
+        // captures and promotions.
+        const bool is_in_check = board.IsInCheck(board.turn);
+        if (is_in_check) {
+            move_count = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
+        } else {
+            move_count = movegen::GenerateMoves<movegen::MoveGenType::kTactical>(board, moves);
+        }
+
+        // Base case.
+        // If there are no moves it's either checkmate, stalemate, or just a quiet position.
+        if (move_count == 0) {
+            // Checkmate
+            if (is_in_check) {
+                const int score = -kMateScore + depth;
+
+                tt.Store(zobrist_hash, ScoreToTT(score, depth), 0, Move{}, TTBound::Exact);
+                return score;
+            }
+
+            // If there's also no quiet moves (as there are no tactical ones) -> Stalemate
+            moves.clear();
+            if (movegen::GenerateMoves<movegen::MoveGenType::kQuiet>(board, moves) == 0) {
+                tt.Store(zobrist_hash, 0, 0, Move{}, TTBound::Exact);
+                return 0;
+            }
+
+            // Otherwise its just a quiet position, evaluate it.
+            const int score = eval::Evaluate(board);
+
+            tt.Store(zobrist_hash, score, 0, Move{}, TTBound::Exact);
+        }
+
+        // Keep track of the best move of the children nodes.
+        int best_score = -search::kInfinity;
+        Move best_move{};
+
+        // Standing pat
+        // Allow the search to stop if subsequent captures lead to worse positions.
+        if (!is_in_check) {
+            const int stand_pat = eval::Evaluate(board);
+            best_score = stand_pat;
+
+            // Return if doing nothing (no capture I mean) is better.
+            // Beta cutoff, fail-high.
+            if (stand_pat >= beta) {
+                tt.Store(zobrist_hash, stand_pat, 0, Move{}, TTBound::Lower);
+                return stand_pat;
+            }
+
+            if (stand_pat > alpha) {
+                alpha = stand_pat;
+            }
+        } else {
+            best_score = -search::kInfinity;
+        }
+
+        // Move ordering: For now just puts the tt_move first, great pay-off tho.
+        OrderMoves(board, moves, tt_entry);
+
+        // Recursively search the children nodes.
+        for (size_t idx = 0; idx < move_count; ++idx) {
+            // Prepare the needed stuff for {Make | Unamake}Move()
+            int score;
+            const Move move = moves[idx];
+            UndoMoveInfo undo{};
+
+            // The first move of a PVS is fully searched, with a full window.
+            // Under the assumption of a good move ordering, the first move searched should be
+            // one of the better moves, for which reason the subsequent moves will be initially
+            // searched with a zero-window (alpha, alpha + 1), to test if they provide an
+            // improvement. If they do, they are re-searched with a full-window.
+            // Re-searches should not be numerous given a good move ordering, the benefits of the
+            // faster zero-window searches will outweight the re-searches.
+            board.MakeMove(move, undo);
+            if (idx == 0) {
+                // Full search
+                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, tt, time_control);
+            } else {
+                // Zero-window search.
+                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, tt, time_control);
+                
+                // If the move was proven to give an improvement, re-search it will a full window.
+                // The node time constraint makes sure that we don't re-evaluate nodes that already
+                // have a null-window (that can be further down a subtree)
+                if (score > alpha && node_type == SearchNodeType::kPVNode)
+                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, tt, time_control);
+            }
+            board.UnmakeMove(move, undo);
+
+            // Check if the allocated time elapsed. Important to do after restoring the board and
+            // before modifying the score, as a dummy score is returned here.
+            if (time_control.stopped)
+                return 0;
+
+            // Update the best score
+            if (score > best_score) {
+                best_score = score;
+                best_move = move;
+            }
+
+            // Update the alpha lower bound when finding the improvement.
+            if (score > alpha) {
+                alpha = score;
+            }
+
+            // Beta cutoff, fail-high.
+            // We found a move that's "too good", the opponent will not take this branch, they have
+            // a better move elsewhere in the tree. Return as to not waste time needlesly.
+            // The returned value is a lower-bound for the nodes true value.
+            if (alpha >= beta) {
+                // Store the result in the transposition table.
+                tt.Store(zobrist_hash, ScoreToTT(best_score, depth), 0, best_move, TTBound::Lower);
+                
+                return best_score; // Fail-soft.
+            }
+        }
+
+        TTBound bound;
+        // Fail-low. The move did not improve the position. It's result is an upper bound on its
+        // true score because it has a cut node child, a node that failed high.
+        if (best_score <= original_alpha) {
+            bound = TTBound::Upper;
+        } else {
+            bound = TTBound::Exact;
+        }
+        
+        // Store the result in the transposition table.
+        tt.Store(zobrist_hash, ScoreToTT(best_score, depth), 0, best_move, bound);
+
+        return best_score;
+    }   
+
+    template int PrincipalVariationSearch<SearchNodeType::kPVNode>(
+        Board&,
         int,
-        int
+        int,
+        int,
+        int,
+        std::vector<std::vector<Move>>&,
+        TranspositionTable&,
+        TimeControlStruct&
     );
 
-    template SearchResult IterativeDeepening<false>(
-        lightknight::Board&,
+    template int PrincipalVariationSearch<SearchNodeType::kNonPVNode>(
+        Board&,
         int,
-        int
+        int,
+        int,
+        int,
+        std::vector<std::vector<Move>>&,
+        TranspositionTable&,
+        TimeControlStruct&
     );
 } // namespace lightknight::search
