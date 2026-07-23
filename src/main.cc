@@ -1,12 +1,21 @@
 #include <board.h>
 #include <move_search.h>
 #include <transposition_table.h>
+#include <uci.h>
 
 #include <chrono>
 #include <iostream>
 
 int main()
 {
+    lightknight::uci::UCI uci;
+
+    uci.Loop();
+    
+    /*
+    const int depth = 9;
+    const int time_ms = 100'000;
+
     lightknight::Board position(
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         //"r2q2k1/2p3p1/p3p2p/bp1pB3/6P1/2PQ3P/PP1N1r2/2KR2R1 w - - 0 20"
@@ -18,8 +27,14 @@ int main()
 
     lightknight::search::TranspositionTable tt(16);
 
+    lightknight::search::TimeControlStruct time_control{
+        .deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_ms),
+        .calls_until_clock_check = 1,
+        .stopped = false
+    };
+
     const auto time1 = std::chrono::steady_clock::now();
-    int score = lightknight::search::IterativeDeepening(position, 7, tt, 1'000);
+    int score = lightknight::search::IterativeDeepening(position, depth, tt, time_control);
     const auto time2 = std::chrono::steady_clock::now();
 
     std::cout
@@ -42,6 +57,6 @@ int main()
         position.MakeMove(tt_entry->move, undo);
     }
     std::cout << '\n';
-   
+   */
     return 0;
 }

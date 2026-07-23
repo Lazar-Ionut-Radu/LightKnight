@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <vector>
+#include <atomic>
 
 #include "types.h"
 #include "board.h"
@@ -29,7 +30,9 @@ namespace lightknight::search {
         int calls_until_clock_check = kCallsPerClockCheck;
 
         // Has the time allocated elapsed.
-        bool stopped = false;
+        // Atomic so it may be modified by the engine's search thread and the uci input
+        // parser that spawned it.
+        std::atomic_bool stopped{false};
     };
 
     enum class SearchNodeType : bool {
@@ -37,52 +40,13 @@ namespace lightknight::search {
         kNonPVNode
     };
 
-    struct SearchStats {
-        uint64_t search_nodes = 0;
-        uint64_t q_nodes = 0;
-        uint64_t leaf_nodes = 0;
-
-        uint64_t pv_nodes = 0;
-        uint64_t cut_nodes = 0;
-        uint64_t all_nodes = 0;
-
-        uint64_t q_pv_nodes = 0;
-        uint64_t q_cut_nodes = 0;
-        uint64_t q_all_nodes = 0;
-        
-        uint64_t evaluations = 0;
-        uint64_t beta_cutoffs = 0;
-
-        int depth_searched = 0;
-        double elapsed_ms = 0.0;
-
-        constexpr uint64_t total_nodes() const {
-            return search_nodes + q_nodes;
-        }
-
-        constexpr double mnps() const {
-            if (elapsed_ms <= 0.0)
-                return 0.0;
-
-            return static_cast<double>(total_nodes()) / (elapsed_ms * 1000.0);
-        }
-    };
-
-    struct SearchResult {
-        int evaluation = 0;
-        lightknight::Move pv[kMaxDepth];
-        int pv_length = 0;
-        SearchStats stats{};
-    };
-
     bool ShouldStopSearch(TimeControlStruct& time_control);
-    
-    
+        
     int IterativeDeepening(
         Board& board,
         int max_depth,
         TranspositionTable& tt,
-        int time_limit_ts
+        TimeControlStruct& time_control
     );
     
     template<SearchNodeType node_type>

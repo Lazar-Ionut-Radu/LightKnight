@@ -83,31 +83,20 @@ namespace lightknight::search {
             }
         }
     }
-
     
     int IterativeDeepening(
         Board& board,
         int max_depth,
         TranspositionTable& tt, 
-        int time_limit_ms
+        TimeControlStruct& time_control
     ) {
         // Clamp the depth so that it no bigger than the depth limit.
         const int target_max_depth = std::clamp(max_depth, 1, kMaxDepth);
-
-        // Avoid invalid negative durations.
-        time_limit_ms = std::max(time_limit_ms, 0);
 
         // Preallocate reusable vector for lists.
         std::vector<std::vector<lightknight::Move>> move_lists(kMaxDepth);
         for (std::vector<lightknight::Move>& moves : move_lists)
             moves.reserve(256);
-
-        // Time control struct.
-        TimeControlStruct time_control{
-            .deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms),
-            .calls_until_clock_check = 1,
-            .stopped = false
-        };
 
         int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
