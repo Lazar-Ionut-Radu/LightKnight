@@ -225,6 +225,7 @@ namespace lightknight::uci {
         std::cout << line << '\n';
         std::cout.flush();
     }
+    
     // Convert string to Move type if the move is legal in the position.
     std::optional<Move> UCI::FindLegalMove(Board& board, const std::string& move_string) const {
         // Generate the legal moves in the position.
@@ -298,6 +299,29 @@ namespace lightknight::uci {
         return go_info;
     }
 
+    void UCI::PrintSearchInfo(const search::SearchInfo& info) {
+        const uint64_t nps = info.time_ms == 0 ? 0 : info.nodes * 1000 / info.time_ms;
+
+        std::ostringstream output;
+
+        output << "info" 
+            << " depth " << info.depth
+            << " seldepth " << info.selective_depth
+            << " score cp " << info.score
+            << " time " << info.time_ms
+            << " nodes " << info.nodes
+            << " nps " << nps;
+
+        if (!info.pv.empty()) {
+            output << " pv";
+
+            for (const Move move : info.pv)
+                output << ' ' << move;
+        }
+
+        this->PrintLine(output.str());
+    }
+
     // Time limit for the subsequent search from the parsed go command info.
     int UCI::ComputeTimeLimitMs(const GoCmdInfo& go_info) const {
         // Search time it's been given expressly.
@@ -360,7 +384,17 @@ namespace lightknight::uci {
                 max_depth                
             ]() mutable {
                 // Search
-                const int score = search::IterativeDeepening(board, max_depth, this->_tt, this->_time_control);
+                search::SearchStats stats{};
+                const int score = search::IterativeDeepening(
+                    board,
+                    max_depth,
+                    this->_tt,
+                    this->_time_control,
+                    stats,
+                    [this](const search::SearchInfo& info) {
+                       this->PrintSearchInfo(info);
+                    }
+                );
 
                 // Get the move.
                 search::TTEntry* tt_entry = this->_tt.Probe(board.zobrist_hash);

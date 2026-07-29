@@ -81,6 +81,9 @@ namespace lightknight::uci {
         
         // Time limit for the subsequent search from the parsed go command info.
         int ComputeTimeLimitMs(const GoCmdInfo& go_info) const;
+
+        // Print info command during a search.
+        void PrintSearchInfo(const search::SearchInfo& info);
     };
 } // namespace lightknight::uci
 

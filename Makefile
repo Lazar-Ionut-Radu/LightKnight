@@ -18,6 +18,7 @@ else
 	CXXFLAGS := $(COMMON_CXXFLAGS) -Og -g3
 endif
 
+LDFLAGS :=
 TEST_LDFLAGS := -lCatch2Main -lCatch2
 TEST_ARGS ?=
 
@@ -52,7 +53,7 @@ $(BUILD_DIR)/%.o: %.cc
 
 # Link engine
 $(ENGINE_EXE): $(OBJ_ENGINE)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Link tests
 $(TEST_EXE): $(OBJ_TEST)
