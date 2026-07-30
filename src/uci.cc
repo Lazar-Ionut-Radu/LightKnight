@@ -306,12 +306,20 @@ namespace lightknight::uci {
 
         output << "info" 
             << " depth " << info.depth
-            << " seldepth " << info.selective_depth
-            << " score cp " << info.score
+            << " seldepth " << info.selective_depth;
+        
+        // Score, either normal or mate score.
+        if (search::isMateScore(info.score))
+            output << " score mate " << search::GetMateMoves(info.score);
+        else 
+            output << " score cp " << info.score;
+        
+        output
             << " time " << info.time_ms
             << " nodes " << info.nodes
             << " nps " << nps;
 
+        // PV
         if (!info.pv.empty()) {
             output << " pv";
 
@@ -319,6 +327,7 @@ namespace lightknight::uci {
                 output << ' ' << move;
         }
 
+        // Print all of this.
         this->PrintLine(output.str());
     }
 
@@ -326,23 +335,22 @@ namespace lightknight::uci {
     int UCI::ComputeTimeLimitMs(const GoCmdInfo& go_info) const {
         // Search time it's been given expressly.
         if (go_info.move_time_ms) {
-            const int time = std::clamp<int>(*go_info.move_time_ms, kMinSearchTime, kMaxSearchTime);
-            
-            return (int)time;
+            return std::clamp<int>(*go_info.move_time_ms, kMinSearchTime, kMaxSearchTime);
         }
-
-        // No time constraints given or imposed by a given clock.
-        const bool has_clock = go_info.white_time_ms.has_value() || go_info.black_time_ms.has_value();
-        if (go_info.infinite || !has_clock)
-            return kMaxSearchTime;
         
         // Time for side to play.
         const bool white_to_move = this->_board.turn == Color::kWhite;
         const int remaining_time = white_to_move ?
             go_info.white_time_ms.value_or(0) : go_info.black_time_ms.value_or(0);
+            
+        // No time constraints given or imposed by a given clock.
+        if (go_info.infinite || !remaining_time)
+            return kMaxSearchTime;
+        
+        // Increment for side to play.
         const int increment = white_to_move ?
             go_info.white_increment_ms.value_or(0) : go_info.black_increment_ms.value_or(0);
-        
+    
         // No time left => minimum time, to bad I guess.
         if (remaining_time <= 0)
             return kMinSearchTime;

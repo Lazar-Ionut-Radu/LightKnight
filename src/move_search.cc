@@ -173,6 +173,10 @@ namespace lightknight::search {
                 const SearchInfo info = BuildSearchInfo(board, tt, stats, score);
                 info_callback(info);
             }
+
+            // Stop if a mate was found.
+            if (isMateScore(score))
+                break;
         }
 
         return result;
@@ -525,6 +529,21 @@ namespace lightknight::search {
         return best_score;
     }   
 
+    
+    bool isMateScore(int score) {
+        return std::abs(score) > (kMateScore - kMaxDepth);
+    }
+
+    int GetMateMoves(int score) {
+        if (score > 0) {
+            const int plies_to_mate = kMateScore - score;
+            return (plies_to_mate + 1) / 2;
+        }
+
+        const int plies_to_mate = kMateScore + score;
+        return -plies_to_mate / 2;
+    }
+    
     template int PrincipalVariationSearch<SearchNodeType::kPVNode>(
         Board&,
         int,

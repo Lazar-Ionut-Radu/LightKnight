@@ -121,6 +121,8 @@ namespace lightknight::search {
         SearchStats& stats
     );
 
+    bool isMateScore(int score);
+    int GetMateMoves(int score);
 } // namespace lightknight::search
 
 #endif // LIGHTKNIGHT_MOVE_SEARCH_H
