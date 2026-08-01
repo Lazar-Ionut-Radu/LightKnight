@@ -4,6 +4,7 @@
 #include "exceptions.h"
 #include "movegen.h"
 #include "move_search.h"
+#include "time_management.h"
 
 #include <atomic>
 #include <chrono>
@@ -43,15 +44,10 @@ namespace lightknight::uci {
         return text;
     }
 
-    UCI::UCI() {
-        this->hash_size_mb = 16;
-
-        this->_board.FromFEN(kStartFen);
-        this->_tt = search::TranspositionTable(this->hash_size_mb);
-    }
+    UCI::UCI() : _engine(16) {};
 
     UCI::~UCI() {
-        StopSearch();
+        this->_engine.StopSearch();
     }
 
     void UCI::Loop() {
@@ -66,7 +62,7 @@ namespace lightknight::uci {
 
             if (line == "quit") {
                 // Make sure the thread is not kept running.
-                this->StopSearch();
+                this->_engine.StopSearch();
                 return;
             }
 
@@ -74,7 +70,7 @@ namespace lightknight::uci {
         }
 
         // Once again, don't forget the search thread running.
-        StopSearch();
+        this->_engine.StopSearch();
     }
 
     void UCI::HandleCommand(const std::string& line) {
@@ -97,7 +93,7 @@ namespace lightknight::uci {
             this->HandleGo(line);
         }
         else if (line == "stop") {
-            this->StopSearch();
+            this->_engine.StopSearch();
         }
         else {
             PrintLine("info string unknown command: " + line);
@@ -119,17 +115,12 @@ namespace lightknight::uci {
     }
 
     void UCI::HandleNewGame() {
-        // Make sure no search is ongoing.
-        this->StopSearch();
-
-        // Handle engine related structures.
-        this->_board.FromFEN(kStartFen);
-        this->_tt.ResizeMB(this->hash_size_mb);
+        this->_engine.NewGame();
     }
 
     void UCI::HandlePosition(const std::string& line) {
         // Make sure no search is ongoing.
-        this->StopSearch();
+        this->_engine.StopSearch();
 
         // Reading the line nicer.
         std::istringstream stream(line);
@@ -202,20 +193,61 @@ namespace lightknight::uci {
             new_board.MakeMove(*move, undo);
         }
 
-        this->_board = new_board;
+        this->_engine.SetPosition(std::move(new_board));
     }
 
     void UCI::HandleGo(const std::string& line) {
         const GoCmdInfo go_info = this->ParseGoCommand(line);
 
-        const int max_depth = go_info.depth.has_value()
-            ? std::clamp(*go_info.depth, 1, search::kMaxDepth)
-            : search::kMaxDepth;
+        // Setup search limits.
+        SearchLimits limits{};
 
-        const int time_limit_ms = this->ComputeTimeLimitMs(go_info);
-        
+        // Depth of the search.
+        if (go_info.depth.has_value()) {
+            limits.max_depth = *go_info.depth;
+        }
+        else {
+            limits.max_depth = search::kMaxDepth;
+        }
 
-        this->StartSearch(max_depth, time_limit_ms);
+        // Time of the search
+        if (go_info.infinite) {
+            limits.time_limit_ms = time_management::kMaxSearchTimeMs;
+        }
+        else if (go_info.move_time_ms.has_value()) {
+            limits.time_limit_ms = *go_info.move_time_ms;
+        }
+        else {
+            const bool white_to_move = this->_engine.board.turn == Color::kWhite;
+
+            std::optional<int> remaining_time_ms = white_to_move ? go_info.white_time_ms : go_info.black_time_ms;
+            std::optional<int> increment_ms = white_to_move ? go_info.white_increment_ms : go_info.black_increment_ms;
+            std::optional<int> moves_to_go = go_info.moves_to_go;
+
+            limits.time_limit_ms = time_management::ComputeTimeLimitMs(remaining_time_ms, increment_ms, moves_to_go);
+        }
+
+        // Maximum number of nodes to search.
+        // [TODO]: For now I don't care.
+        limits.max_nodes = std::numeric_limits<uint64_t>::max();
+
+        this->_engine.StartSearch(
+            limits,
+            [this](const search::SearchInfo& info) {
+                this->PrintSearchInfo(info);
+            },
+            [this](Move move) {
+                if (move.IsNull()) {
+                    this->PrintLine("bestmove 0000");
+                    return;
+                }
+
+                std::ostringstream output;
+                output << "bestmove " << move;
+
+                this->PrintLine(output.str());
+            }
+        );
     }
 
     void UCI::PrintLine(const std::string& line) {
@@ -331,103 +363,4 @@ namespace lightknight::uci {
         this->PrintLine(output.str());
     }
 
-    // Time limit for the subsequent search from the parsed go command info.
-    int UCI::ComputeTimeLimitMs(const GoCmdInfo& go_info) const {
-        // Search time it's been given expressly.
-        if (go_info.move_time_ms) {
-            return std::clamp<int>(*go_info.move_time_ms, kMinSearchTime, kMaxSearchTime);
-        }
-        
-        // Time for side to play.
-        const bool white_to_move = this->_board.turn == Color::kWhite;
-        const int remaining_time = white_to_move ?
-            go_info.white_time_ms.value_or(0) : go_info.black_time_ms.value_or(0);
-            
-        // No time constraints given or imposed by a given clock.
-        if (go_info.infinite || !remaining_time)
-            return kMaxSearchTime;
-        
-        // Increment for side to play.
-        const int increment = white_to_move ?
-            go_info.white_increment_ms.value_or(0) : go_info.black_increment_ms.value_or(0);
-    
-        // No time left => minimum time, to bad I guess.
-        if (remaining_time <= 0)
-            return kMinSearchTime;
-
-        // [TODO] These are actually related to the engine, I should put them in a file of their own
-        // perhaps. Alongside the time related constants in uci.h
-        // Compute the time.
-        int allocated_time;
-        if (go_info.moves_to_go.has_value()) {
-            // Split it kinda equally I guess idk.
-            allocated_time = remaining_time / std::max<int>(*go_info.moves_to_go, 1) + increment / 2;
-        }
-        else {
-            // https://www.chessprogramming.org/Time_Management
-            allocated_time = remaining_time / 20 + increment / 2;
-        }
-        return allocated_time;
-    }
-
-    void UCI::StartSearch(int max_depth, int time_limit_ms) {
-        // Make sure a search is not already running
-        this->StopSearch();
-
-        // Copy board.
-        Board search_board = this->_board;
-        
-        // For fear of not having stored the PV / best move.
-        this->_tt.Clear();
-
-        // Init time-control struct.
-        this->_time_control.deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(time_limit_ms);
-        this->_time_control.calls_until_clock_check = search::kCallsPerClockCheck;
-        this->_time_control.stopped = false;
-
-        this->_search_thread = std::thread(
-            [
-                this,
-                board = std::move(search_board),
-                max_depth                
-            ]() mutable {
-                // Search
-                search::SearchStats stats{};
-                const int score = search::IterativeDeepening(
-                    board,
-                    max_depth,
-                    this->_tt,
-                    this->_time_control,
-                    stats,
-                    [this](const search::SearchInfo& info) {
-                       this->PrintSearchInfo(info);
-                    }
-                );
-
-                // Get the move.
-                search::TTEntry* tt_entry = this->_tt.Probe(board.zobrist_hash);
-                Move move{};
-                if (tt_entry) {
-                    move = tt_entry->move;
-                }
-
-                if (move.IsNull()) {
-                    PrintLine("bestmove 0000");
-                    return;
-                }
-
-                std::ostringstream output;
-                output << "bestmove " << move;
-
-                PrintLine(output.str());
-            }
-        );
-    }
-
-    void UCI::StopSearch() {
-        this->_time_control.stopped = true;
-
-        if (_search_thread.joinable())
-            _search_thread.join();
-    }
 } // namespace lightknight::uci

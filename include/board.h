@@ -27,6 +27,9 @@ namespace lightknight {
 
         uint64_t zobrist_hash = 0ULL;
 
+        // History of positions (their hashes) for finding repetitions inside the search function.
+        std::vector<uint64_t> hashes_history;
+
         // Constructors
         Board();
         explicit Board(const std::string& fen);
@@ -52,6 +55,12 @@ namespace lightknight {
         bool IsInCheck(Color color) const;
         bool IsCheckMate(std::vector<lightknight::Move> &moves) const;
         bool IsStaleMate(std::vector<lightknight::Move> &moves) const;
+
+        // Considers the last 'search_ply' positions to be from a search tree rather than played in
+        // the game. If the current position occured twice within the search tree or three times
+        // within the whole history the function returns true. To check true 3 fold repetition keep
+        // 'search_ply' equal to 0.
+        bool IsRepetition(int search_ply = 0) const;
 
         lightknight::Piece GetPiece(uint64_t square_bb) const;
         void MovePiece(uint64_t from, uint64_t to);

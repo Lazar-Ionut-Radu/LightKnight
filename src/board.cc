@@ -134,6 +134,11 @@ namespace lightknight {
         
         // Finally compute the zobrist hash.
         this->zobrist_hash = this->ComputeZobristHash();
+
+        // Allocate mem for the position hashes history vector.
+        this->hashes_history.clear();
+        this->hashes_history.reserve(256);
+        this->hashes_history.push_back(zobrist_hash);
     }
 
     Board Board::FromRaw(
@@ -159,6 +164,11 @@ namespace lightknight {
             | piece_bitboards[Piece::kBlackRook] | piece_bitboards[Piece::kBlackQueen] | piece_bitboards[Piece::kBlackKing];
         
         board.zobrist_hash = board.ComputeZobristHash();
+        
+        board.hashes_history.clear();
+        board.hashes_history.reserve(256);
+        board.hashes_history.push_back(board.zobrist_hash);
+
         return board;
     }
 
@@ -175,6 +185,10 @@ namespace lightknight {
         this->fullmoves = 1;
         this->turn = lightknight::Color::kWhite;
         this->zobrist_hash = this->ComputeZobristHash();
+
+        this->hashes_history.clear();
+        this->hashes_history.reserve(256);
+        this->hashes_history.push_back(this->zobrist_hash);
     }
     
     void Board::XorEnPassantHash(uint64_t ep) {
@@ -263,6 +277,36 @@ namespace lightknight {
         return moves.empty() && !this->IsInCheck(this->turn);
     }
     
+    bool Board::IsRepetition(int search_ply) const {
+        // Search back at most halfclock moves, i.e. up to the last move that cannot be reverted.
+        const int curr_index = static_cast<int>(this->hashes_history.size()) - 1;
+        const int max_distance = std::min(curr_index, static_cast<int>(this->halfmoves));
+
+        int prev_matches = 0;
+
+        // Search jumps by 2 bcs the same positions must have the same turn.
+        // Also, a repetition cannot happen 2 ply apart (bcs the opponent must revert its move)
+        // so we start with dist = 4. 
+        for (int dist = 4; dist <= max_distance; dist += 2) {
+            // Not a match.
+            if (this->hashes_history[curr_index - dist] != this->zobrist_hash)
+                continue;
+
+            // Match
+            ++prev_matches;
+
+            // True three fold repetition.
+            if (prev_matches >= 2)
+                return true;
+
+            // Repetition repeats inside the search tree.
+            if (search_ply > 0 && dist <= search_ply)
+                return true;
+        }
+
+        return false;
+    }
+
     lightknight::Piece Board::GetPiece(uint64_t square_bb) const {
         for (size_t idx = 0; idx < lightknight::kNumPieces; idx++) {
             if (square_bb & this->piece_bitboards[idx])
@@ -439,9 +483,14 @@ namespace lightknight {
         this->UpdateCastlingRights(from, to);
         this->turn = OppositeColor(turn);
         this->zobrist_hash ^= zobrists.turn;
+
+        this->hashes_history.push_back(this->zobrist_hash);
     }
 
     void Board::UnmakeMove(lightknight::Move move, const lightknight::UndoMoveInfo& undo) {
+        // Get rid of that position from the history of hashes.
+        this->hashes_history.pop_back();
+
         const uint64_t from = move.GetOriginBitboard();
         const uint64_t to = move.GetDestionationBitboard();
 

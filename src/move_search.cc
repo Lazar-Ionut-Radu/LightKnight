@@ -142,7 +142,7 @@ namespace lightknight::search {
         TranspositionTable& tt, 
         TimeControlStruct& time_control,
         SearchStats& stats,
-        const SearchInfoCallback& info_callback
+        const SearchInfoCallback& info_callback // Prints search info with UCI.
     ) {
         // Timing for stats.
         const auto start_time = std::chrono::steady_clock::now();
@@ -157,6 +157,8 @@ namespace lightknight::search {
 
         int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
+            stats.selective_depth = 0;
+
             const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, tt, time_control, stats);
     
             if (time_control.stopped)
@@ -204,6 +206,14 @@ namespace lightknight::search {
         ++stats.search_nodes;
         stats.selective_depth = std::max(stats.selective_depth, depth);
 
+        // Check if the move produced a 3 fold repetition.
+        // Moreover, if this position is repeated (even only twice) within the search tree we
+        // return a draw result to avoid searches of duplicate subtrees.
+        // Check before TT probing as it is path-dependent. Don't save to TT for the same
+        // reason.
+        if (depth > 0 && board.IsRepetition(depth))
+            return 0;
+        
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
@@ -360,6 +370,14 @@ namespace lightknight::search {
         ++stats.q_nodes;
         stats.selective_depth = std::max(stats.selective_depth, depth);
 
+        // Check if the move produced a 3 fold repetition.
+        // Moreover, if this position is repeated (even only twice) within the search tree we
+        // return a draw result to avoid searches of duplicate subtrees.
+        // Check before TT probing as it is path-dependent. Don't save to TT for the same
+        // reason.
+        if (depth > 0 && board.IsRepetition(depth))
+            return 0;
+        
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
@@ -427,6 +445,7 @@ namespace lightknight::search {
             const int score = eval::Evaluate(board);
 
             tt.Store(zobrist_hash, score, 0, Move{}, TTBound::Exact);
+            return score;
         }
 
         // Keep track of the best move of the children nodes.

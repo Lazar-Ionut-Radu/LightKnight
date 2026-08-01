@@ -9,9 +9,7 @@
 #include <atomic>
 
 #include "board.h"
-#include "transposition_table.h"
-#include "move_search.h"
-
+#include "engine.h"
 namespace lightknight::uci {
     const std::string kStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     const int kMinSearchTime = 10;
@@ -44,20 +42,10 @@ namespace lightknight::uci {
 
     private:
         // Engine state.
-        Board _board;
-        search::TranspositionTable _tt;
-        search::TimeControlStruct _time_control;
-        
-        // Engine options.
-        size_t hash_size_mb = 16;
+        Engine _engine;
 
-        // UCI related fields
-        // Thread that the engine will operate on.
-        std::thread _search_thread;
-        // Flag for stopping a search, requested by the GUI, passed to the search function.
-        std::atomic_bool _stop_request{false}; 
         // Mutex for outputting text, either by this thread or the search thread.
-        std::mutex _output_mutex; 
+        std::mutex _output_mutex;
 
         // Print to output.
         void PrintLine(const std::string& line);
@@ -70,18 +58,12 @@ namespace lightknight::uci {
         void HandlePosition(const std::string& line);
         void HandleGo(const std::string& line);
 
-        void StartSearch(int max_depth, int time_limit_ms);
-        void StopSearch();
-
         // Convert string to Move type if the move is legal in the position.
         std::optional<Move> FindLegalMove(Board& board, const std::string& move_string) const;
 
         // Return a GoCmdInfo struct when parsing the go command.
         GoCmdInfo ParseGoCommand(const std::string& line) const;
         
-        // Time limit for the subsequent search from the parsed go command info.
-        int ComputeTimeLimitMs(const GoCmdInfo& go_info) const;
-
         // Print info command during a search.
         void PrintSearchInfo(const search::SearchInfo& info);
     };

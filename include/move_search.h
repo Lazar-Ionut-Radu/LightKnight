@@ -16,14 +16,6 @@ namespace lightknight::search {
     inline constexpr int kMaxDepth = 128;
     inline constexpr int kCallsPerClockCheck = 1024;
 
-    struct PrincipalVariation {
-        // table[depth] = best line found at that depth .
-        lightknight::Move table[kMaxDepth][kMaxDepth]{};
-        
-        // Depth of pv for each one. 
-        int length[kMaxDepth]{};
-    };
-
     struct TimeControlStruct {
         std::chrono::steady_clock::time_point deadline;
 
@@ -71,20 +63,7 @@ namespace lightknight::search {
         std::vector<Move> pv; 
     };
 
-    std::vector<Move> ExtractPV(
-        Board board,
-        const TranspositionTable& tt
-    );
-
-    SearchInfo BuildSearchInfo(
-        const Board& board,
-        const TranspositionTable& tt,
-        const SearchStats& stats,
-        int score
-    );
-
-    bool ShouldStopSearch(TimeControlStruct& time_control);
-    
+    // Used in iterative deepening to print out information about the search with UCI.
     using SearchInfoCallback = std::function<void(const SearchInfo&)>;
 
     int IterativeDeepening(
@@ -93,7 +72,7 @@ namespace lightknight::search {
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& search_stats,
-        const SearchInfoCallback& info_callback
+        const SearchInfoCallback& info_callback // Prints search info with UCI.
     );
 
     template<SearchNodeType node_type>
@@ -120,9 +99,25 @@ namespace lightknight::search {
         TimeControlStruct& time_control,
         SearchStats& stats
     );
+    
+    int ScoreToTT(int score, int ply);
+    int ScoreFromTT(int score, int ply);
 
     bool isMateScore(int score);
     int GetMateMoves(int score);
+
+    void OrderMoves(Board& board, std::vector<Move>& moves, TTEntry* tt_entry);
+    
+    bool ShouldStopSearch(TimeControlStruct& time_control);
+    
+    std::vector<Move> ExtractPV(Board board, const TranspositionTable& tt);
+    SearchInfo BuildSearchInfo(
+        const Board& board,
+        const TranspositionTable& tt,
+        const SearchStats& stats,
+        int score
+    );
+
 } // namespace lightknight::search
 
 #endif // LIGHTKNIGHT_MOVE_SEARCH_H
