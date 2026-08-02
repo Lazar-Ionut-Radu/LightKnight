@@ -3,14 +3,15 @@
 #include "board.h"
 #include "exceptions.h"
 #include "types.h"
-#include <array>
 #include <vector>
 
+using namespace lightknight;
+
 TEST_CASE(
-    "Board Initialization Invalid FEN strings",
+    "Board::FromFEN - Initialization Invalid FEN strings",
     "[UnitTest][Board][FEN]"
 ) {
-    static const std::array<std::pair<std::string, std::string>, 22> tests = {
+    static const std::vector<std::pair<std::string, std::string>> tests = {
         std::make_pair(std::string("rnbqkbnr/pppppppp/8/8/8/PPPPPPPP/RNBQBNR w KQkq - 0 1"),     std::string("Too few ranks specified")),
         std::make_pair(std::string("rnbqkbnr/pppppppp/8/8/8/8/8/PPPPPPPP/RNBQBNR w KQkq - 0 1"), std::string("Too many ranks specified")),
         std::make_pair(std::string("rnbqkbnr/pppppppp/8/9/9/PPPPPPPppP/RNBQBNR w KQkq - 0 1"),   std::string("Too many files specified, last rank")),
@@ -67,10 +68,10 @@ void CheckBoard(const lightknight::Board& actual, const lightknight::Board& expe
 }
 
 TEST_CASE(
-    "Board Initialization Valid FEN String",
-     "[UnitTest][Board][FEN]"
+    "Board::FromFEN - Initialization Valid FEN String",
+    "[UnitTest][Board][FEN]"
 ) {
-    static const std::array<std::pair<std::string, lightknight::Board>, 3> tests = {
+    static const std::vector<std::pair<std::string, lightknight::Board>> tests = {
         std::make_pair(
             std::string("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"),
             lightknight::Board::FromRaw(
@@ -147,7 +148,7 @@ TEST_CASE(
         const std::string& fen_str = test.first;
         const lightknight::Board& expected_board = test.second;
         lightknight::Board board;
-            
+        
         SECTION(fen_str) {    
             REQUIRE_NOTHROW(board.FromFEN(fen_str));
             CheckBoard(board, expected_board);
@@ -156,11 +157,9 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "MakeMove and UnmakeMove restore the board",
-    "[UnitTest][Board][Move]"
+    "Board::MakeMove, Board::UnmakeMove - Restore the board after 1 move",
+    "[ComponentTest][Board][Move][Zobrist]"
 ) {
-    using namespace lightknight;
-
     struct MoveTestCase {
         const char* name;
         const char* before_fen;
@@ -169,7 +168,7 @@ TEST_CASE(
         Piece expected_captured_piece;
     };
 
-    static const std::array<MoveTestCase, 14> tests = {{
+    const std::vector<MoveTestCase> tests = {
         {
             "Normal quiet move",
             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -308,7 +307,7 @@ TEST_CASE(
             "r3k2r/8/8/8/8/8/8/R3K2q w Qkq - 0 2",
             Piece::kWhiteRook
         }
-    }};
+    };
 
     for (const MoveTestCase& test : tests) {
         DYNAMIC_SECTION(test.name) {
@@ -339,95 +338,173 @@ TEST_CASE(
     }
 }
 
-TEST_CASE(
-    "Make and unmake a 20-ply game sequence",
-    "[UnitTest][Board][Move]"
+struct RepetitionCheck {
+    int search_ply;
+    bool expected;
+};
+
+struct GameSequence {
+    const char* name;
+    const char* fen;
+    std::vector<lightknight::Move> moves;
+    std::vector<RepetitionCheck> repetition_checks;
+};
+
+std::vector<lightknight::UndoMoveInfo> PlayMoves(
+    lightknight::Board& board,
+    const std::vector<lightknight::Move>& moves
 ) {
-    using namespace lightknight;
+    std::vector<lightknight::UndoMoveInfo> undo_infos;
+    undo_infos.reserve(moves.size());
 
-    Board board(
-        "rnbqkbnr/pppppppp/8/8/8/8/"
-        "PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    );
-
-    const Board original = board;
-
-    // Italian Game: 10 full moves, 20 plies.
-    const std::array<Move, 20> moves = {
-        Move(Square::E2, Square::E4), // 1. e4
-        Move(Square::E7, Square::E5), // ... e5
-
-        Move(Square::G1, Square::F3), // 2. Nf3
-        Move(Square::B8, Square::C6), // ... Nc6
-
-        Move(Square::F1, Square::C4), // 3. Bc4
-        Move(Square::F8, Square::C5), // ... Bc5
-
-        Move(Square::C2, Square::C3), // 4. c3
-        Move(Square::G8, Square::F6), // ... Nf6
-
-        Move(Square::D2, Square::D3), // 5. d3
-        Move(Square::D7, Square::D6), // ... d6
-
-        Move(
-            Square::E1,
-            Square::G1,
-            PromotionPieceType::kKnight,
-            MoveType::kCastling
-        ), // 6. O-O
-
-        Move(
-            Square::E8,
-            Square::G8,
-            PromotionPieceType::kKnight,
-            MoveType::kCastling
-        ), // ... O-O
-
-        Move(Square::F1, Square::E1), // 7. Re1
-        Move(Square::A7, Square::A6), // ... a6
-
-        Move(Square::C4, Square::B3), // 8. Bb3
-        Move(Square::C5, Square::A7), // ... Ba7
-
-        Move(Square::B1, Square::D2), // 9. Nbd2
-        Move(Square::H7, Square::H6), // ... h6
-
-        Move(Square::D2, Square::F1), // 10. Nf1
-        Move(Square::F8, Square::E8)  // ... Re8
-    };
-
-    std::array<UndoMoveInfo, 20> undo_stack{};
-    std::vector<Board> positions;
-
-    positions.reserve(moves.size() + 1);
-    positions.push_back(board);
-
-    for (std::size_t ply = 0; ply < moves.size(); ++ply) {
-        INFO("Making ply " << ply + 1);
-        INFO("Move: " << moves[ply]);
-
-        board.MakeMove(moves[ply], undo_stack[ply]);
-        positions.push_back(board);
+    for (const lightknight::Move move : moves) {
+        lightknight::UndoMoveInfo undo;
+        board.MakeMove(move, undo);
+        undo_infos.push_back(undo);
     }
 
-    const Board expected_final(
-        "r1bqr1k1/bpp2pp1/p1np1n1p/4p3/"
-        "4P3/1BPP1N2/PP3PPP/R1BQRNK1 w - - 2 11"
-    );
+    return undo_infos;
+}
 
-    INFO("Checking final position after 20 plies");
-    CheckBoard(board, expected_final);
-
-    for (std::size_t ply = moves.size(); ply-- > 0;) {
-        INFO("Unmaking ply " << ply + 1);
-        INFO("Move: " << moves[ply]);
-
-        board.UnmakeMove(moves[ply], undo_stack[ply]);
-
-        INFO("Checking position restored after unmake");
-        CheckBoard(board, positions[ply]);
+// For testing Board::MakeMove, Board::UnmakeMove, Board::IsRepetition 
+const std::vector<GameSequence> test_game_sequences = {
+    {
+        .name = "Ruy Lopez: 10 ply",
+        .fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        .moves = {
+            Move(Square::E2, Square::E4), // 1. e4 e5
+            Move(Square::E7, Square::E5),
+            Move(Square::G1, Square::F3), // 2. Nf3 Nc6
+            Move(Square::B8, Square::C6),
+            Move(Square::F1, Square::B5), // 3. Bb5 a6
+            Move(Square::A7, Square::A6),
+            Move(Square::B5, Square::A4), // 4 Ba4 Nf6
+            Move(Square::G8, Square::F6),
+            Move(Square::D2, Square::D3), // 5. d3 b5
+            Move(Square::B7, Square::B5)
+        },
+        .repetition_checks = {
+            {0, false},
+            {4, false}
+        },
+    },
+    {
+        .name = "Italian Game: 20 ply",
+        .fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        .moves =  {
+            Move(Square::E2, Square::E4), // 1. e4 e5
+            Move(Square::E7, Square::E5), 
+            Move(Square::G1, Square::F3), // 2. Nf3 Nc6
+            Move(Square::B8, Square::C6), 
+            Move(Square::F1, Square::C4), // 3. Bc4 Bc5
+            Move(Square::F8, Square::C5), 
+            Move(Square::C2, Square::C3), // 4. c3 Nf6
+            Move(Square::G8, Square::F6), 
+            Move(Square::D2, Square::D3), // 5. d3 d6
+            Move(Square::D7, Square::D6), 
+            Move(
+                Square::E1,
+                Square::G1,
+                PromotionPieceType::kKnight,
+                MoveType::kCastling
+            ), // 6. O-O O-O
+            Move(
+                Square::E8,
+                Square::G8,
+                PromotionPieceType::kKnight,
+                MoveType::kCastling
+            ), 
+            Move(Square::F1, Square::E1), // 7. Re1 a6
+            Move(Square::A7, Square::A6),
+            Move(Square::C4, Square::B3), // 8. Bb3 Ba7
+            Move(Square::C5, Square::A7),
+            Move(Square::B1, Square::D2), // 9. Nbd2 h6
+            Move(Square::H7, Square::H6), 
+            Move(Square::D2, Square::F1), // 10. Nf1 Re8
+            Move(Square::F8, Square::E8)  
+        },
+        .repetition_checks = {
+            {0, false},
+            {10, false}
+        },
+    },
+    {
+        .name = "Threefold repetition",
+        .fen = "1r2n1k1/pr1n3p/5Qp1/4p3/4P3/1b3PP1/P4BB1/K1R3NR b - - 0 30",
+        .moves = {
+            Move(Square::E8, Square::F6),
+            Move(Square::A2, Square::B3),
+            Move(Square::B7, Square::B3),
+            Move(Square::C1, Square::C2),
+            Move(Square::B3, Square::B1), // 1
+            Move(Square::A1, Square::A2),
+            Move(Square::B1, Square::B4),
+            Move(Square::A2, Square::A1), 
+            Move(Square::B4, Square::B1), // 2
+            Move(Square::A1, Square::A2),
+            Move(Square::B1, Square::B4),
+            Move(Square::A2, Square::A1),
+            Move(Square::B4, Square::B1)  // 3
+        },
+        .repetition_checks = {
+            {0, true},
+            {9, true}
+        }
+    },
+    {
+        .name = "Twofold repetition",
+        .fen = "q4rk1/5p1p/8/5Q2/8/p5P1/5P1P/6K1 b - - 0 1",
+        .moves = {
+            Move(Square::A3, Square::A2),
+            Move(Square::F5, Square::G5), // 1
+            Move(Square::G8, Square::H8),
+            Move(Square::G5, Square::F6),
+            Move(Square::H8, Square::G8),
+            Move(Square::F6, Square::G5) // 2
+        },
+        .repetition_checks = {
+            {1, false},
+            {3, false},
+            {4, true}, // 2 fold inside search tree -> true
+            {5, true}
+        }
     }
+};
 
-    INFO("Checking complete restoration of initial position");
-    CheckBoard(board, original);
+TEST_CASE(
+    "Board::MakeMove, Board::UnmakeMove - Restore the board after multiple moves",
+    "[ComponentTest][Board][Move][Zobrist]"
+) {
+    for (const GameSequence& test : test_game_sequences) {
+        DYNAMIC_SECTION(test.name) {
+            lightknight::Board board(test.fen);
+            const lightknight::Board original = board;
+
+            const std::vector<lightknight::UndoMoveInfo> undo_infos = PlayMoves(board, test.moves);
+            
+            for (size_t i = test.moves.size(); i-- > 0;) {
+                board.UnmakeMove(test.moves[i], undo_infos[i]);
+            }
+
+            CheckBoard(board, original);
+        }
+    }
+}
+
+TEST_CASE(
+    "Board::IsRepetition",
+    "[ComponentTest][Board][Move][Zobrist]"
+) {
+    for (const GameSequence& test : test_game_sequences) {
+        DYNAMIC_SECTION(test.name) {
+            lightknight::Board board(test.fen);
+        
+            PlayMoves(board, test.moves);
+            
+            for (const RepetitionCheck& rep_check : test.repetition_checks) {
+                CAPTURE(rep_check.search_ply);
+                CHECK(board.IsRepetition(rep_check.search_ply) == rep_check.expected);
+            }
+        }
+    }
 }

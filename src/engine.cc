@@ -45,7 +45,7 @@ namespace lightknight {
         this->StopSearch();
 
         // For now to be safe lets just clear the tt even though its dumb.
-        // this->_tt.Clear();
+        this->_tt.Clear();
 
         // Copy the board for the search.
         Board search_board = this->board;

@@ -12,17 +12,21 @@ namespace lightknight {
         uint64_t PerftImplementation(
             Board& board,
             int depth,
-            size_t ply,
+            size_t current_depth,
+            bool bulk_count,
             std::vector<std::vector<Move>>& move_lists
         ) {
             if (depth == 0)
                 return 1;
 
-            std::vector<Move> &moves = move_lists[ply];
+            std::vector<Move> &moves = move_lists[current_depth];
             moves.clear();
 
             const size_t move_count = lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
             uint64_t nodes = 0;
+
+            if (bulk_count && depth == 1)
+                return move_count;
 
             for (size_t idx = 0; idx < move_count; ++idx) {
                 const Move move = moves[idx];
@@ -30,7 +34,7 @@ namespace lightknight {
                 UndoMoveInfo undo{};
 
                 board.MakeMove(move, undo);
-                nodes += PerftImplementation(board, depth - 1, ply + 1, move_lists);
+                nodes += PerftImplementation(board, depth - 1, current_depth + 1, bulk_count, move_lists);
                 board.UnmakeMove(move, undo);
             }
 
@@ -38,7 +42,7 @@ namespace lightknight {
         }
     } // namespace
 
-    uint64_t Perft(Board& board, int depth) {
+    uint64_t Perft(Board& board, int depth, bool bulk_count) {
         if (depth < 0)
             throw std::invalid_argument("Perft depth cannot be negative");
 
@@ -52,6 +56,6 @@ namespace lightknight {
         for (std::vector<Move>& moves : move_lists)
             moves.reserve(256);
 
-        return PerftImplementation(board, depth, 0, move_lists);
+        return PerftImplementation(board, depth, 0, bulk_count, move_lists);
     }
 } // namespace lightknight

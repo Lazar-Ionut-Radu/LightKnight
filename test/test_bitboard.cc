@@ -1,11 +1,11 @@
 // test/test_bitboard.cc
 #include <catch2/catch_test_macros.hpp>
-#include <array>
 #include <types.h>
+#include <vector>
 
-TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
+TEST_CASE("Bitboard Directional Movement", "[UnitTest][Bitboard]") {
     SECTION ("North") {
-        const std::array<std::pair<uint64_t, uint64_t>, 3> tests_north = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_north = {
             std::make_pair(0x80000000000ULL, 0x8000000000000ULL),
             std::make_pair(0x20000ULL, 0x2000000ULL),
             std::make_pair(0x8000000000000000ULL, 0ULL)
@@ -16,7 +16,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION ("South") {
-        const std::array<std::pair<uint64_t, uint64_t>, 3> tests_south = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_south = {
             std::make_pair(0x8000000000000000ULL, 0x80000000000000ULL),
             std::make_pair(0x200000ULL, 0x2000ULL),
             std::make_pair(0x4ULL, 0ULL)
@@ -27,7 +27,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION ("East") {
-        const std::array<std::pair<uint64_t, uint64_t>, 3> tests_east = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_east = {
             std::make_pair(0x10ULL, 0x20ULL),
             std::make_pair(0x8000000ULL, 0x10000000ULL),
             std::make_pair(0x8000ULL, 0ULL)
@@ -38,7 +38,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION ("West") {
-        const std::array<std::pair<uint64_t, uint64_t>, 3> tests_west = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_west = {
             std::make_pair(0x8000ULL, 0x4000ULL),
             std::make_pair(0x200000000ULL, 0x100000000ULL),
             std::make_pair(0x100000000ULL, 0ULL)
@@ -49,7 +49,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION("North-West") {
-        const std::array<std::pair<uint64_t, uint64_t>, 4> tests_northwest = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_northwest = {
             std::make_pair(0x100000000ULL, 0ULL),
             std::make_pair(0x8000000000000000ULL, 0ULL),
             std::make_pair(0x100000000000000ULL, 0ULL),
@@ -61,7 +61,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION("North-East") {
-        const std::array<std::pair<uint64_t, uint64_t>, 4> tests_northeast = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_northeast = {
             std::make_pair(0x200ULL, 0x40000ULL),
             std::make_pair(0x8000ULL, 0ULL),
             std::make_pair(0x8000000000000000ULL, 0ULL),
@@ -73,7 +73,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION("South-West") {
-        const std::array<std::pair<uint64_t, uint64_t>, 4> tests_southwest = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_southwest = {
             std::make_pair(0x1ULL, 0ULL),
             std::make_pair(0x1000000ULL, 0ULL),
             std::make_pair(0x4ULL, 0ULL),
@@ -85,7 +85,7 @@ TEST_CASE("Bitboard Directional Moving", "[UnitTest][Bitboard]") {
     }
 
     SECTION("South-East") {
-        const std::array<std::pair<uint64_t, uint64_t>, 4> tests_southeast = {
+        const std::vector<std::pair<uint64_t, uint64_t>> tests_southeast = {
             std::make_pair(0x400ULL, 0x8ULL),
             std::make_pair(0x8ULL, 0ULL),
             std::make_pair(0x80ULL, 0ULL),
@@ -104,7 +104,7 @@ struct LSBTestStruct {
 };
 
 TEST_CASE("Bitboard Least Significant Bit", "[UnitTest][Bitboard]") {
-    const std::array<std::pair<uint64_t, LSBTestStruct>, 5> tests = {
+    const std::vector<std::pair<uint64_t, LSBTestStruct>> tests = {
         std::make_pair(0x1ULL, LSBTestStruct{0x1ULL, lightknight::Square::A1, 1}),
         std::make_pair(0x4000000ULL, LSBTestStruct{0x4000000ULL, lightknight::Square::C4, 1}),
         std::make_pair(0xdc000004800002ULL, LSBTestStruct{0x2ULL, lightknight::Square::B1, 8}),
@@ -135,7 +135,7 @@ TEST_CASE("Bitboard Least Significant Bit", "[UnitTest][Bitboard]") {
 }
 
 TEST_CASE("Square-Bitboard Conversions", "[UnitTest][Bitboard][Square]") {
-    const std::array<std::pair<lightknight::Square, uint64_t>, 5> tests = {
+    const std::vector<std::pair<lightknight::Square, uint64_t>> tests = {
         std::make_pair(lightknight::Square::A1, 0x1ULL),
         std::make_pair(lightknight::Square::G1, 0x40ULL),
         std::make_pair(lightknight::Square::E3, 0x100000ULL),
@@ -156,8 +156,8 @@ struct SquareTestStruct {
     int file;
 };
 
-TEST_CASE("Square Rank/File" "[UnitTest][Square]") {
-    const std::array<std::pair<lightknight::Square, SquareTestStruct>, 10> tests = {
+TEST_CASE("Square Rank/File", "[UnitTest][Square]") {
+    const std::vector<std::pair<lightknight::Square, SquareTestStruct>> tests = {
         std::make_pair(lightknight::Square::A1, SquareTestStruct{0, 0}),
         std::make_pair(lightknight::Square::H5, SquareTestStruct{4, 7}),
         std::make_pair(lightknight::Square::F8, SquareTestStruct{7, 5}),

@@ -6,7 +6,7 @@
 namespace lightknight {
     class Board;
 
-    uint64_t Perft(Board& board, int depth);
+    uint64_t Perft(Board& board, int depth, bool bulk_count = false);
 } // namespace lightknight
 
 #endif // LIGHTKNIGHT_PERFT_H
