@@ -1,3 +1,4 @@
+// main.cc
 #include <board.h>
 #include <move_search.h>
 #include <transposition_table.h>
