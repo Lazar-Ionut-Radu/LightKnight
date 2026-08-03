@@ -588,4 +588,9 @@ namespace lightknight {
 
         return this->GetPiece(move.GetDestionationBitboard());
     }
+
+    Piece Board::GetMovedPiece(Move move) const {
+        return GetPiece(move.GetOriginBitboard());
+    }
+    
 } // namespace lightknight

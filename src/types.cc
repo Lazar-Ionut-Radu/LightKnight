@@ -54,6 +54,24 @@ namespace lightknight {
         return os;
     }
 
+    Piece Move::GetPromotedPiece(Color color) const {
+        assert(GetMoveType() == MoveType::kPromotion);
+
+        const unsigned prom_idx = static_cast<unsigned>(GetPromotionPieceType()) >> 12;
+
+        // 0 = knight
+        // 1 = bishop
+        // 2 = rook
+        // 3 = queen
+
+        const unsigned piece_idx = 
+            static_cast<unsigned>(Piece::kWhiteKnight)
+            + prom_idx
+            + 6 * static_cast<unsigned>(color);
+
+        return static_cast<Piece>(piece_idx);
+    } 
+
     void PrintBitboard(uint64_t bitboard) {
         for (int rank = 7; rank >= 0; rank--) {
             for (int file = 0; file <= 7; file++) {

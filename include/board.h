@@ -73,6 +73,7 @@ namespace lightknight {
     
         bool IsCapture(Move move) const;
         Piece GetCapturedPiece(Move move) const;
+        Piece Board::GetMovedPiece(Move move) const;
     };
 } // namespace lightknight
 
