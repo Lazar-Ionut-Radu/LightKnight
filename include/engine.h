@@ -11,6 +11,8 @@
 #include "transposition_table.h"
 
 namespace lightknight {
+
+    const int kDefaultHashSizeMB = 256;
     struct SearchLimits {
         // Search no deeper than this depth.
         std::optional<int> max_depth;
@@ -33,7 +35,7 @@ namespace lightknight {
         using BestMoveCallback = std::function<void(Move)>;
 
         // Constructor destructor.
-        explicit Engine(size_t hash_size_mb = 16);
+        explicit Engine(size_t hash_size_mb = kDefaultHashSizeMB);
         ~Engine();
 
         // No copying.

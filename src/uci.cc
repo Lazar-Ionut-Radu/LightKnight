@@ -44,7 +44,7 @@ namespace lightknight::uci {
         return text;
     }
 
-    UCI::UCI() : _engine(16) {};
+    UCI::UCI() : _engine() {};
 
     UCI::~UCI() {
         this->_engine.StopSearch();

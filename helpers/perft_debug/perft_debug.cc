@@ -55,7 +55,7 @@ namespace {
         std::vector<lightknight::Move> moves;
         moves.reserve(256);
 
-        lightknight::movegen::GenerateMoves(board, moves);
+        lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
 
         for (const lightknight::Move move : moves) {
             if (MoveToString(move) == uci_move)
@@ -67,7 +67,7 @@ namespace {
 
     void PrintLine(const std::vector<std::string>& line) {
         if (line.empty()) {
-            std::cout << "<root>";
+            std::cout << "<root> ";
             return;
         }
 
@@ -321,7 +321,7 @@ PerftDivideResult GetLightknightPerftDivide(
     std::vector<lightknight::Move> moves;
     moves.reserve(256);
 
-    lightknight::movegen::GenerateMoves(board, moves);
+    lightknight::movegen::GenerateMoves<lightknight::movegen::MoveGenType::kAll>(board, moves);
     PerftDivideResult result;
 
     for (const lightknight::Move move : moves) {
@@ -511,33 +511,44 @@ bool TraceFirstPerftDiscrepancy(
 }
 
 int main(int argc, char* argv[]) {
-    // Parse arguments.
-    bool trace_mode = false;
-    int argument_offset = 1;
-
-    if (argc >= 2 && std::string(argv[1]) == "--trace") {
-        trace_mode = true;
-        argument_offset = 2;
-    }
-
-    if (argc != argument_offset + 2) {
+    if (argc != 4) {
         std::cerr
             << "Usage:\n"
-            << "  " << argv[0]
-            << " [--trace] \"<fen>\" <depth>\n";
+            << "  " << argv[0] << " \"<fen>\" <depth> <trace>\n"
+            << "\n"
+            << "Arguments:\n"
+            << "  depth  Search depth\n"
+            << "  trace  0 to disable tracing, 1 to enable it\n";
 
         return 1;
     }
 
-    const std::string fen =
-        argv[argument_offset];
+    const std::string fen = argv[1];
 
-    const int depth =
-        std::stoi(argv[argument_offset + 1]);
+    int depth;
+    bool trace_mode;
+
+    try {
+        depth = std::stoi(argv[2]);
+
+        const int trace = std::stoi(argv[3]);
+        if (trace != 0 && trace != 1) {
+            throw std::invalid_argument("trace must be 0 or 1");
+        }
+
+        trace_mode = trace == 1;
+    } catch (const std::exception& exception) {
+        std::cerr << "Invalid arguments: " << exception.what() << '\n';
+        return 1;
+    }
+
+    if (depth < 1) {
+        std::cerr << "Invalid depth: depth must be at least 1.\n";
+        return 1;
+    }
 
     // Path to stockfish.
-    const std::string stockfish_path =
-        "/usr/games/stockfish";
+    const std::string stockfish_path = "/usr/games/stockfish";
 
     lightknight::Board board(fen);
 

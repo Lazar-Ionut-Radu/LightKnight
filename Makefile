@@ -6,39 +6,66 @@ COMMON_CXXFLAGS := \
 	-Wall \
 	-Wextra \
 	-Iinclude \
+	-MMD \
+	-MP \
 	-fconstexpr-ops-limit=200000000
 
 MODE ?= debug
+NATIVE ?= 0
 
-ifeq ($(MODE),release)
-	BUILD_DIR := build/release
-	CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG -march=native
-else
+ifeq ($(MODE),debug)
 	BUILD_DIR := build/debug
 	CXXFLAGS := $(COMMON_CXXFLAGS) -Og -g3
+else ifeq ($(MODE),release)
+	BUILD_DIR := build/release
+	CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG
+
+	ifeq ($(NATIVE),1)
+		CXXFLAGS += -march=native
+	endif
+else
+	$(error Invalid MODE '$(MODE)'; expected debug or release)
 endif
 
 LDFLAGS :=
-TEST_LDFLAGS := -lCatch2Main -lCatch2
+LDLIBS :=
+TEST_LDLIBS := -lCatch2Main -lCatch2
 TEST_ARGS ?=
 
+# -------------------------------------------------------------------
 # Source files
-SRC := $(wildcard src/*.cc)
-SRC_ENGINE := $(wildcard src/*.cc)
-SRC_TEST := $(filter-out src/main.cc,$(SRC))
+# -------------------------------------------------------------------
+
+ENGINE_SRC := $(wildcard src/*.cc)
+ENGINE_LIB_SRC := $(filter-out src/main.cc,$(ENGINE_SRC))
 TEST_SRC := $(wildcard test/*.cc)
 
+# -------------------------------------------------------------------
 # Object files
-OBJ_ENGINE := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(SRC_ENGINE))
-OBJ_TEST := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(SRC_TEST) $(TEST_SRC))
+# -------------------------------------------------------------------
 
+OBJ_ENGINE := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(ENGINE_SRC))
+OBJ_TEST := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(ENGINE_LIB_SRC) $(TEST_SRC))
+
+# -------------------------------------------------------------------
 # Executables
+# -------------------------------------------------------------------
+
 ENGINE_EXE := $(BUILD_DIR)/lightknight
 TEST_EXE := $(BUILD_DIR)/tests
 
-.PHONY: all debug release test test-list test-verbose test-help clean magics perft-debug
+.PHONY: \
+	all \
+	debug \
+	release \
+	tests \
+	test \
+	benchmark \
+	clean \
+	magics \
+	perft-debug
 
-all: $(ENGINE_EXE) $(TEST_EXE)
+all: $(ENGINE_EXE)
 
 debug:
 	$(MAKE) MODE=debug all
@@ -46,55 +73,55 @@ debug:
 release:
 	$(MAKE) MODE=release all
 
-# Compile .cc -> .o (create subdirs automatically)
-$(BUILD_DIR)/%.o: %.cc
+# Compile .cc -> .o and create subdirectories automatically.
+$(BUILD_DIR)/%.o: %.cc Makefile
 	mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Link engine
+# Link engine.
 $(ENGINE_EXE): $(OBJ_ENGINE)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
-# Link tests
+# Link tests.
 $(TEST_EXE): $(OBJ_TEST)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(TEST_LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ \
+		$(LDLIBS) $(TEST_LDLIBS)
 
-# Run tests
+# -------------------------------------------------------------------
+# Tests
+# -------------------------------------------------------------------
+
+# Compile tests without running.
+tests: $(TEST_EXE)
+
+# Compile and run tests.
 test: $(TEST_EXE)
 	./$(TEST_EXE) $(TEST_ARGS)
 
-test-list: $(TEST_EXE)
-	./$(TEST_EXE) --list-tests
-
-test-verbose: $(TEST_EXE)
-	./$(TEST_EXE) --success
-
-test-help: $(TEST_EXE)
-	./$(TEST_EXE) --help
-
+# Compule and run benchmarks.
 benchmark:
 	$(MAKE) \
 		MODE=release \
 		TEST_ARGS='"[!benchmark]"' \
 		test
 
-# Clean build directory
+# -------------------------------------------------------------------
+# Clean
+# -------------------------------------------------------------------
+
 clean:
 	rm -rf build
 
 # -------------------------------------------------------------------
 # Magics generator executable
 # -------------------------------------------------------------------
+
 MAGICS_SRC := helpers/magics-gen/magics_gen.cc
 MAGICS_OBJ := $(BUILD_DIR)/helpers/magics-gen/magics_gen.o
 MAGICS_EXE := $(BUILD_DIR)/magics-gen
 
-$(MAGICS_OBJ): $(MAGICS_SRC)
-	mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
 $(MAGICS_EXE): $(MAGICS_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 magics: $(MAGICS_EXE)
 	./$(MAGICS_EXE)
@@ -102,24 +129,32 @@ magics: $(MAGICS_EXE)
 # -------------------------------------------------------------------
 # Perft debug executable
 # -------------------------------------------------------------------
+
 PERFT_DEBUG_SRC := helpers/perft_debug/perft_debug.cc
 PERFT_DEBUG_OBJ := $(BUILD_DIR)/helpers/perft_debug/perft_debug.o
 
-PERFT_DEBUG_ENGINE_SRC := $(filter-out src/main.cc,$(SRC))
-PERFT_DEBUG_ENGINE_OBJ := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(PERFT_DEBUG_ENGINE_SRC))
+PERFT_DEBUG_ENGINE_SRC := $(ENGINE_LIB_SRC)
+PERFT_DEBUG_ENGINE_OBJ := \
+	$(patsubst %.cc,$(BUILD_DIR)/%.o,$(PERFT_DEBUG_ENGINE_SRC))
+
 PERFT_DEBUG_EXE := $(BUILD_DIR)/perft-debug
 
-$(PERFT_DEBUG_EXE) : $(PERFT_DEBUG_OBJ) $(PERFT_DEBUG_ENGINE_OBJ)
-	$(CXX) $(CXXFLAGS) $^ -o $@
-
-FEN ?= 
-DEPTH ?= 1
-TRACE ?= 0
-
-PERFT_DEBUG_ARGS := "$(FEN)" $(DEPTH)
-ifneq ($(filter 1 true yes,$(TRACE)),)
-	PERFT_DEBUG_ARGS := --trace $(PERFT_DEBUG_ARGS)
-endif
+$(PERFT_DEBUG_EXE): $(PERFT_DEBUG_OBJ) $(PERFT_DEBUG_ENGINE_OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 perft-debug: $(PERFT_DEBUG_EXE)
-	./$(PERFT_DEBUG_EXE) $(PERFT_DEBUG_ARGS)
+
+# -------------------------------------------------------------------
+# Header dependency files
+# -------------------------------------------------------------------
+
+ALL_OBJ := $(sort \
+	$(OBJ_ENGINE) \
+	$(OBJ_TEST) \
+	$(MAGICS_OBJ) \
+	$(PERFT_DEBUG_OBJ) \
+	$(PERFT_DEBUG_ENGINE_OBJ))
+
+DEPS := $(ALL_OBJ:.o=.d)
+
+-include $(DEPS)
