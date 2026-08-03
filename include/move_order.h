@@ -54,4 +54,4 @@ namespace lightknight::search {
     );
 } // namespace lightknight::search
 
-#endif LIGHTKNIGHT_MOVE_ORDER_H
+#endif // LIGHTKNIGHT_MOVE_ORDER_H

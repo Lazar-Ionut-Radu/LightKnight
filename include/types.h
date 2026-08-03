@@ -194,17 +194,16 @@ namespace lightknight {
 
         constexpr uint64_t GetOriginBitboard() const { return SquareToBitboard(this->GetOriginSquare()); }
         constexpr uint64_t GetDestionationBitboard() const { return SquareToBitboard(this->GetDestinationSquare()); }
-        Piece Move::GetPromotedPiece(Color color) const;
+        constexpr Piece GetPromotedPiece(Color color) const;
 
-        constexpr bool Move::IsPromotion() const { return GetMoveType() == MoveType::kPromotion; }
-        constexpr bool Move::IsQueenPromotion() const {
+        constexpr bool IsPromotion() const { return GetMoveType() == MoveType::kPromotion; }
+        constexpr bool IsQueenPromotion() const {
             return IsPromotion() && GetPromotionPieceType() == PromotionPieceType::kQueen;
         }
-        constexpr bool Move::IsUnderpromotion() const {
+        constexpr bool IsUnderpromotion() const {
             return IsPromotion() && GetPromotionPieceType() != PromotionPieceType::kQueen; 
         }
     
-
         #include <ostream>
     };
     std::ostream& operator<<(std::ostream& os, const lightknight::Move& move);
