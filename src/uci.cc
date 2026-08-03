@@ -101,7 +101,7 @@ namespace lightknight::uci {
     }
 
     void UCI::HandleUci() {
-        this->PrintLine("id name LightKnight");
+        this->PrintLine("id name LightKnight v0.1.0");
         this->PrintLine("id author Lazar Ionut-Radu");
         
         // [TODO] later.
