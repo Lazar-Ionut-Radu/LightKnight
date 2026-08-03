@@ -194,7 +194,7 @@ namespace lightknight {
 
         constexpr uint64_t GetOriginBitboard() const { return SquareToBitboard(this->GetOriginSquare()); }
         constexpr uint64_t GetDestionationBitboard() const { return SquareToBitboard(this->GetDestinationSquare()); }
-        constexpr Piece GetPromotedPiece(Color color) const;
+        Piece GetPromotedPiece(Color color) const;
 
         constexpr bool IsPromotion() const { return GetMoveType() == MoveType::kPromotion; }
         constexpr bool IsQueenPromotion() const {

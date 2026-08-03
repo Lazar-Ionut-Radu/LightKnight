@@ -83,6 +83,7 @@ namespace lightknight::search {
         int max_depth, // Max search depth.
         int depth, // Current depth.
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores. 
         TranspositionTable& tt, // Memoization of positions.
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -95,6 +96,7 @@ namespace lightknight::search {
         int beta, // The best (lowest) score the opponent can guarantee so far.
         int depth,
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& stats

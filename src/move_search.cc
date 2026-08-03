@@ -1,4 +1,4 @@
-// search.cc
+// move_search.cc
 #include "move_search.h"
 
 #include <iostream>
@@ -12,6 +12,7 @@
 #include "eval.h"
 #include "movegen.h"
 #include "transposition_table.h"
+#include "move_order.h"
 
 namespace lightknight::search {
     int ScoreToTT(int score, int ply) {
@@ -54,36 +55,6 @@ namespace lightknight::search {
         return false;
     }
 
-    int ScoreMove(Board& board, Move move, Move tt_move) {
-        static const int kPieceVals[12] = {100, 320, 330, 500, 900, 0, 100, 320, 330, 500, 900, 0};
-        
-        if (move == tt_move)
-            return 5'000;
-
-        if (board.IsCapture(move)) {
-            const Piece attacker = board.GetPiece(move.GetOriginBitboard());
-            const Piece victim = board.GetCapturedPiece(move);
-
-            return kPieceVals[victim] - kPieceVals[attacker];
-        }
-
-        return 0;
-    }
-
-    void OrderMoves(Board& board, std::vector<Move>& moves, TTEntry* tt_entry) {
-        if (!tt_entry)
-            return;
-
-        const Move tt_move = tt_entry->move;
-
-        for (size_t idx = 0; idx < moves.size(); ++idx) {
-            if (moves[idx] == tt_move) {
-                std::swap(moves.front(), moves[idx]);
-                return;
-            }
-        }
-    }
-    
     std::vector<Move> ExtractPV(
         Board board,
         const TranspositionTable& tt
@@ -150,16 +121,21 @@ namespace lightknight::search {
         // Clamp the depth so that it no bigger than the depth limit.
         const int target_max_depth = std::clamp(max_depth, 1, kMaxDepth);
 
-        // Preallocate reusable vector for lists.
+        // Preallocate reusable vector for moves.
         std::vector<std::vector<lightknight::Move>> move_lists(kMaxDepth);
         for (std::vector<lightknight::Move>& moves : move_lists)
             moves.reserve(256);
 
+        // Preallocate reusable vector for move scores.
+        std::vector<std::vector<int>> score_lists(kMaxDepth);
+        for (std::vector<int>& scores : score_lists)
+            scores.reserve(256);
+ 
         int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
             stats.selective_depth = 0;
 
-            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, tt, time_control, stats);
+            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, tt, time_control, stats);
     
             if (time_control.stopped)
                 break;
@@ -192,6 +168,7 @@ namespace lightknight::search {
         int max_depth, // Max search depth.
         int depth, // Current depth.
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         TranspositionTable& tt, // Memoization of positions.
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -253,34 +230,40 @@ namespace lightknight::search {
         // Base Case:
         // Reaching the max depth of this search.
         if (depth >= max_depth) {
-            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, tt, time_control, stats);
+            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, tt, time_control, stats);
         }
 
         // Generate moves.
         // Use the move_lists to avoid expensive allocations at each function call.
         std::vector<Move>& moves = move_lists[depth];
         moves.clear();
-        const size_t move_count = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
+        size_t num_moves = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
     
         // Base Case:
         // There are no legal moves in the position. Checkmate or Stalemate.
-        if (move_count == 0) {
+        if (num_moves == 0) {
             const int score = board.IsInCheck(board.turn) ? -search::kMateScore + depth : 0;
             return score;
         }
 
-        // Move ordering: For now just puts the tt_move first, great pay-off tho.
-        OrderMoves(board, moves, tt_entry);
+        // Compute the move scores.
+        std::vector<int>& scores = score_lists[depth];
+        ScoreMoves(moves, scores, num_moves, board, tt_entry);
 
         // Keep track of the best move of the children nodes.
         int best_score = -search::kInfinity;
         Move best_move{};
 
+        // First move is always searched with a full window.
+        bool first_move = true;
+
         // Recursively seach the children nodes.
-        for (size_t idx = 0; idx < move_count; ++idx) {
+        while (num_moves > 0) {
+            // Pick the best remaining move.
+            const Move move = PickMove(moves, scores, num_moves);
+
             // Prepare the needed stuff for {Make | Unamake}Move()
             int score;
-            const Move move = moves[idx];
             UndoMoveInfo undo{};
 
             // The first move of a PVS is fully searched, with a full window.
@@ -291,18 +274,19 @@ namespace lightknight::search {
             // Re-searches should not be numerous given a good move ordering, the benefits of the
             // faster zero-window searches will outweight the re-searches.
             board.MakeMove(move, undo);
-            if (idx == 0) {
+            if (first_move) {
                 // Full search
-                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, tt, time_control, stats);
+                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                first_move = false;
             } else {
                 // Zero-window search.
-                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, tt, time_control, stats);
+                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, tt, time_control, stats);
+                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
             }
             board.UnmakeMove(move, undo);
             
@@ -356,6 +340,7 @@ namespace lightknight::search {
         int beta, // The best (lowest) score the opponent can guarantee so far.
         int depth,
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
+        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -412,20 +397,20 @@ namespace lightknight::search {
         // Generate moves.
         std::vector<Move>& moves = move_lists[depth];
         moves.clear();
-        size_t move_count;
+        size_t num_moves;
 
         // To decide what moves to generate, either all moves (to get out of check) or just
         // captures and promotions.
         const bool is_in_check = board.IsInCheck(board.turn);
         if (is_in_check) {
-            move_count = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
+            num_moves = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
         } else {
-            move_count = movegen::GenerateMoves<movegen::MoveGenType::kTactical>(board, moves);
+            num_moves = movegen::GenerateMoves<movegen::MoveGenType::kTactical>(board, moves);
         }
 
         // Base case.
         // If there are no moves it's either checkmate, stalemate, or just a quiet position.
-        if (move_count == 0) {
+        if (num_moves == 0) {
             // Checkmate
             if (is_in_check) {
                 const int score = -kMateScore + depth;
@@ -472,14 +457,21 @@ namespace lightknight::search {
             best_score = -search::kInfinity;
         }
 
-        // Move ordering: For now just puts the tt_move first, great pay-off tho.
-        OrderMoves(board, moves, tt_entry);
+        // The first move is always searched with a full window.
+        bool first_move = true;
+
+        // Move Ordering.
+        // Compute the move scores.
+        std::vector<int>& scores = score_lists[depth];
+        ScoreMoves(moves, scores, num_moves, board, tt_entry);
 
         // Recursively search the children nodes.
-        for (size_t idx = 0; idx < move_count; ++idx) {
+        while (num_moves > 0) {
+            // Pick the best remaining move.
+            const Move move = PickMove(moves, scores, num_moves);
+
             // Prepare the needed stuff for {Make | Unamake}Move()
             int score;
-            const Move move = moves[idx];
             UndoMoveInfo undo{};
 
             // The first move of a PVS is fully searched, with a full window.
@@ -490,18 +482,19 @@ namespace lightknight::search {
             // Re-searches should not be numerous given a good move ordering, the benefits of the
             // faster zero-window searches will outweight the re-searches.
             board.MakeMove(move, undo);
-            if (idx == 0) {
+            if (first_move) {
                 // Full search
-                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, tt, time_control, stats);
+                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                first_move = false;
             } else {
                 // Zero-window search.
-                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, tt, time_control, stats);
+                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, tt, time_control, stats);
+                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
             }
             board.UnmakeMove(move, undo);
 
@@ -547,8 +540,8 @@ namespace lightknight::search {
 
         return best_score;
     }   
-
     
+
     bool isMateScore(int score) {
         return std::abs(score) > (kMateScore - kMaxDepth);
     }
@@ -570,6 +563,7 @@ namespace lightknight::search {
         int,
         int,
         std::vector<std::vector<Move>>&,
+        std::vector<std::vector<int>>&,
         TranspositionTable&,
         TimeControlStruct&,
         SearchStats&
@@ -582,6 +576,7 @@ namespace lightknight::search {
         int,
         int,
         std::vector<std::vector<Move>>&,
+        std::vector<std::vector<int>>&,
         TranspositionTable&,
         TimeControlStruct&,
         SearchStats&
