@@ -79,6 +79,10 @@ namespace lightknight::search {
             if (itt == legal_moves.end())
                 break;
 
+            // Check if it's draw by three fold.
+            if (board.IsRepetition())
+                break;
+
             // Add to pv.
             const Move move = entry->move;
             pv.push_back(move);
