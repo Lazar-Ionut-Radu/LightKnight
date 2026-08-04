@@ -6,6 +6,16 @@ I started the development of this engine only because of my interest in the subj
 
 In the beginning my goal was just to make something that can beat me at chess. It turns out that's not a hard task at all, so now I will try to make it as good as I can. We'll see how much I can improve it, however it's just a hobby project, thus the "Light" in its name.
 
+## Strength Progression
+
+To get a sense of how well everything is coming together I'm keeping track of ELO changes between consecutive versions. I'm running SPRT tests with the help of the [fastchess](https://github.com/Disservin/fastchess) cli tool, using an [opening book](https://github.com/official-stockfish/books/blob/master/8moves_v3.pgn.zip) borrowed from Stockfish.
+
+| Version | Change summary | Time control | ELO diff | W / D / L |
+|:----|:----|:----:|:----:|:----:|
+| v0.1.0 | Initial release | - | - | - |
+| v0.2.0 | MVV-LVA move ordering | 60+0.6 | 156.84 ± 27.07 | 249 / 131 / 62 |
+||||||
+
 ## UCI Commands
 
 LightKnight currently supports the following UCI commands:
