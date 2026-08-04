@@ -341,7 +341,7 @@ namespace lightknight::uci {
             << " seldepth " << info.selective_depth;
         
         // Score, either normal or mate score.
-        if (search::isMateScore(info.score))
+        if (search::IsMateScore(info.score))
             output << " score mate " << search::GetMateMoves(info.score);
         else 
             output << " score cp " << info.score;

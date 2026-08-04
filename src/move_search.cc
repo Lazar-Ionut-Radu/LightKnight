@@ -153,7 +153,7 @@ namespace lightknight::search {
             }
 
             // Stop if a mate was found.
-            if (isMateScore(score))
+            if (IsMateScore(score))
                 break;
         }
 
@@ -542,7 +542,7 @@ namespace lightknight::search {
     }   
     
 
-    bool isMateScore(int score) {
+    bool IsMateScore(int score) {
         return std::abs(score) > (kMateScore - kMaxDepth);
     }
 

@@ -105,7 +105,7 @@ namespace lightknight::search {
     int ScoreToTT(int score, int ply);
     int ScoreFromTT(int score, int ply);
 
-    bool isMateScore(int score);
+    bool IsMateScore(int score);
     int GetMateMoves(int score);
 
     void OrderMoves(Board& board, std::vector<Move>& moves, TTEntry* tt_entry);
