@@ -187,7 +187,8 @@ namespace lightknight::search {
         ++stats.search_nodes;
         stats.selective_depth = std::max(stats.selective_depth, depth);
 
-        // Check if the move produced a 3 fold repetition.
+        // Basecase: 
+        // Draw by 3-fold repetition
         // Moreover, if this position is repeated (even only twice) within the search tree we
         // return a draw result to avoid searches of duplicate subtrees.
         // Check before TT probing as it is path-dependent. Don't save to TT for the same
@@ -204,34 +205,43 @@ namespace lightknight::search {
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
         const int original_alpha = alpha;
 
-        // Check the transposition table to see if the position is already evaluated.
-        const uint64_t zobrist_hash = board.zobrist_hash; 
+        // For TT probing and TT stores.
         const uint8_t remaining_depth = max_depth - depth;
+        const uint64_t zobrist_hash = board.zobrist_hash; 
+        TTEntry* tt_entry = nullptr;
         
-        TTEntry* tt_entry = tt.Probe(zobrist_hash);
-        if (tt_entry) {
-            // We consider only entries that are searched at a deeper depth.
-            if (tt_entry->depth >= remaining_depth) {
-                const int tt_score = ScoreFromTT(tt_entry->score, depth);
-                
-                // A score whose value is exactly known -> return.
-                if (tt_entry->bound == TTBound::Exact) {
-                    return tt_score;
-                }
+        // Check the transposition table to see if the position is already evaluated.
+        // If 50 move rule applies then this is a leaf node (either a checkmate, stalemate
+        // or 50-move rule draw, which will be caught right after) -> Don't probe TT.
+        const bool fifty_move_rule = board.halfmoves >= 100;
 
-                // Beta cutoff, fail-high.
-                if (tt_entry->bound == TTBound::Lower && tt_score >= beta) {
-                    return tt_score;
-                }
+        if (!fifty_move_rule) {    
+            tt_entry = tt.Probe(zobrist_hash);
 
-                // Fail low.
-                if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
-                    return tt_score;
+            if (tt_entry) {
+                // We consider only entries that are searched at a deeper depth.
+                if (tt_entry->depth >= remaining_depth) {
+                    const int tt_score = ScoreFromTT(tt_entry->score, depth);
+                    
+                    // A score whose value is exactly known -> return.
+                    if (tt_entry->bound == TTBound::Exact) {
+                        return tt_score;
+                    }
+
+                    // Beta cutoff, fail-high.
+                    if (tt_entry->bound == TTBound::Lower && tt_score >= beta) {
+                        return tt_score;
+                    }
+
+                    // Fail low.
+                    if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
+                        return tt_score;
+                    }
                 }
             }
         }
 
-        // Base Case:
+        // Basecase:
         // Reaching the max depth of this search.
         if (depth >= max_depth) {
             return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, tt, time_control, stats);
@@ -242,13 +252,20 @@ namespace lightknight::search {
         std::vector<Move>& moves = move_lists[depth];
         moves.clear();
         size_t num_moves = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
-    
-        // Base Case:
+        
+        // Basecase:
         // There are no legal moves in the position. Checkmate or Stalemate.
+        const bool in_check = board.IsInCheck(board.turn);
+
         if (num_moves == 0) {
-            const int score = board.IsInCheck(board.turn) ? -search::kMateScore + depth : 0;
+            const int score = in_check ? -search::kMateScore + depth : 0;
             return score;
         }
+        
+        // Basecase:
+        // Draw by 50-move rule (while in check but not checkmated)
+        if (fifty_move_rule)
+            return 0;
 
         // Compute the move scores.
         std::vector<int>& scores = score_lists[depth];
@@ -359,14 +376,23 @@ namespace lightknight::search {
         ++stats.q_nodes;
         stats.selective_depth = std::max(stats.selective_depth, depth);
 
-        // Check if the move produced a 3 fold repetition.
+        // Basecase:
+        // Draw by 3-fold repetition
         // Moreover, if this position is repeated (even only twice) within the search tree we
         // return a draw result to avoid searches of duplicate subtrees.
         // Check before TT probing as it is path-dependent. Don't save to TT for the same
         // reason.
         if (depth > 0 && board.IsRepetition(depth))
             return 0;
-        
+
+        const bool in_check = board.IsInCheck(board.turn);
+        const bool fifty_move_draw = board.halfmoves >= 100;
+
+        // Basecase:
+        // Draw by 50-move rule (while not in check)
+        if (fifty_move_draw && !in_check)
+            return 0;
+
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
@@ -376,26 +402,34 @@ namespace lightknight::search {
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
         const int original_alpha = alpha;
 
-        // Check the transposition table to see if the position is already evaluated.
+        // For TT probing and TT stores.
         const uint64_t zobrist_hash = board.zobrist_hash;
-        TTEntry* tt_entry = tt.Probe(zobrist_hash);
-        if (tt_entry) {
-            const int tt_score = ScoreFromTT(tt_entry->score, depth);
+        TTEntry* tt_entry = nullptr;
 
-            // We don't need to test the depth, nodes from Q search are considered depth 0 as far
-            // as the transposition table is concerned.
-            // Exact match, return
-            if (tt_entry->bound == TTBound::Exact) {
-                return tt_score;
+        // Check the transposition table to see if the position is already evaluated.
+        // If 50 move rule applies then this is a leaf node (either a checkmate, stalemate
+        // or 50-move rule draw, which will be caught right after) -> Don't probe TT.
+        if (!fifty_move_draw) {
+            tt_entry = tt.Probe(zobrist_hash);
+            
+            if (tt_entry) {
+                const int tt_score = ScoreFromTT(tt_entry->score, depth);
+
+                // We don't need to test the depth, nodes from Q search are considered depth 0 as far
+                // as the transposition table is concerned.
+                // Exact match, return
+                if (tt_entry->bound == TTBound::Exact) {
+                    return tt_score;
+                }
+
+                // Fail high, beta cutoff.
+                if (tt_entry->bound == TTBound::Lower && tt_score >= beta)
+                    return tt_score;
+
+                // Fail low.
+                if (tt_entry->bound == TTBound::Upper && tt_score <= alpha)
+                    return tt_score;
             }
-
-            // Fail high, beta cutoff.
-            if (tt_entry->bound == TTBound::Lower && tt_score >= beta)
-                return tt_score;
-
-            // Fail low.
-            if (tt_entry->bound == TTBound::Upper && tt_score <= alpha)
-                return tt_score;
         }
 
         // Generate moves.
@@ -405,37 +439,40 @@ namespace lightknight::search {
 
         // To decide what moves to generate, either all moves (to get out of check) or just
         // captures and promotions.
-        const bool is_in_check = board.IsInCheck(board.turn);
-        if (is_in_check) {
+        if (in_check) {
             num_moves = movegen::GenerateMoves<movegen::MoveGenType::kAll>(board, moves);
         } else {
             num_moves = movegen::GenerateMoves<movegen::MoveGenType::kTactical>(board, moves);
         }
 
-        // Base case.
+        // Basecase.
         // If there are no moves it's either checkmate, stalemate, or just a quiet position.
         if (num_moves == 0) {
-            // Checkmate
-            if (is_in_check) {
+            // Basecase: Checkmate
+            if (in_check) {
                 const int score = -kMateScore + depth;
 
                 tt.Store(zobrist_hash, ScoreToTT(score, depth), 0, Move{}, TTBound::Exact);
                 return score;
             }
 
-            // If there's also no quiet moves (as there are no tactical ones) -> Stalemate
+            // Basecase: Stalemate
             moves.clear();
             if (movegen::GenerateMoves<movegen::MoveGenType::kQuiet>(board, moves) == 0) {
                 tt.Store(zobrist_hash, 0, 0, Move{}, TTBound::Exact);
                 return 0;
             }
 
-            // Otherwise its just a quiet position, evaluate it.
+            // Basecase: Quiet position.
             const int score = eval::Evaluate(board);
 
             tt.Store(zobrist_hash, score, 0, Move{}, TTBound::Exact);
             return score;
         }
+
+        // Basecase: Draw by 50-move rule. (when in check)
+        if (fifty_move_draw)
+            return 0;
 
         // Keep track of the best move of the children nodes.
         int best_score = -search::kInfinity;
@@ -443,7 +480,7 @@ namespace lightknight::search {
 
         // Standing pat
         // Allow the search to stop if subsequent captures lead to worse positions.
-        if (!is_in_check) {
+        if (!in_check) {
             const int stand_pat = eval::Evaluate(board);
             best_score = stand_pat;
 

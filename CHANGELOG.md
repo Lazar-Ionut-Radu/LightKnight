@@ -2,6 +2,11 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.2.1] - 2026-08-05
+
+### Fixed
+- Search now considers draw by 50-move rule.
+- PV computed correctly from the TT in case of 3-fold repetition; it no longer repeats until max size is achieved. 
 ## [0.2.0] - 2026-08-04
 
 ### Added
