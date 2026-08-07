@@ -20,11 +20,12 @@ namespace lightknight::search {
         if (!old_entry.valid)
             return true;
 
-        // Compare depth
-        if (new_depth > old_entry.depth)
+        // Compare depth (+ age diff as a gradual aging mechanism)
+        const int age_diff = static_cast<uint8_t>(_generation - old_entry.generation);
+        if (new_depth + age_diff > old_entry.depth)
             return true;
 
-        if (new_depth < old_entry.depth)
+        if (new_depth + age_diff < old_entry.depth)
             return false;
 
         // Depths equal.
@@ -57,7 +58,8 @@ namespace lightknight::search {
             .move = move,
             .bound = bound,
             .depth = depth,
-            .valid = true
+            .valid = true,
+            .generation = this->_generation
         };
     }
 
@@ -72,10 +74,11 @@ namespace lightknight::search {
     TTEntry* TranspositionTable::Probe(uint64_t zobrist) {
         TTEntry &entry = (*this)[zobrist];
     
-        if (entry.valid && entry.zobrist == zobrist)
-            return &entry;
-
-        return nullptr;
+        if (!entry.valid || entry.zobrist != zobrist)
+            return nullptr;
+    
+        entry.generation = _generation; // Refresh TT hits.
+        return &entry;
     }
 
     const TTEntry* TranspositionTable::Probe(uint64_t zobrist) const {
@@ -92,17 +95,29 @@ namespace lightknight::search {
         const size_t num_entries = size_mb * bytes_per_mb / sizeof(TTEntry);
 
         this->_entries.assign(num_entries, TTEntry{});
+        this->_generation = 0;
     }
 
     void TranspositionTable::ResizeCounts(size_t size) {
         this->_entries.assign(size, TTEntry{});
+        this->_generation = 0;
     }
 
     void TranspositionTable::Clear() {
         std::fill(_entries.begin(), _entries.end(), TTEntry{});
+        _generation = 0;
     }
 
     size_t TranspositionTable::Size() const {
         return _entries.size();
     }
+
+    uint8_t TranspositionTable::GetGeneration() {
+        return _generation;
+    }
+
+    void TranspositionTable::IncrementGeneration() {
+        ++this->_generation;
+    }
+
 } // namespace lightknight::movegen

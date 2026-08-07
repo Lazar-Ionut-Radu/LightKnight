@@ -17,12 +17,11 @@ To make the results more tangible, here's a more intuitive way to put it:
 - $400$ ELO difference: $\sim 91\%$ expected score for the higher-rated player
 
 
-
 | Version | Change summary | Time control | ELO diff | W / D / L |
 |:----|:----|:----:|:----:|:----:|
 | v0.1.0 | Initial release | - | - | - |
 | v0.2.0 | MVV-LVA move ordering | $60+0.6$ | $156.84 \pm 27.07$ | $249$ / $131$ / $62$ |
-||||||
+| v0.3.0 | TT aging. TT retained between moves | $60+0.6$ | $9.38 \pm 13.46$| $264$ / $499$ / $237$ |
 
 ## UCI Commands
 
@@ -38,6 +37,11 @@ LightKnight currently supports the following UCI commands:
   * Supported options: `wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`, `infinite`
 * `stop`: stops the current search and returns the best move found
 * `quit`: stops the engine and exits
+
+## Known Issues
+
+- <b>Zobrist Hashing and En Passant</b>: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
+
 
 ## Compilation
 Building mode is controlled by the ```MODE``` varible, which can be either ```debug``` or ```release```. Debug build retain assertions and debugging information, while release build include optimisation flags. Keep in mind that compiling the engine might take longer than expected because move generation for sliding pieces is precomputed, at compile time.

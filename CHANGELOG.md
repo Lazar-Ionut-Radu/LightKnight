@@ -2,6 +2,14 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.3.0] - 2026-08-07
+
+### Added
+- TT aging mechanism. Entries encountered during the current search get refreshes (generation variable = current generation). Older entries gradually lose importance according to their age; Replacement based on depth is now: new_depth > old_depth - age_difference.
+
+### Fixed
+- TT is no longer cleared between moves of the same game.
+
 ## [0.2.1] - 2026-08-05
 
 ### Fixed

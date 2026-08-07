@@ -134,7 +134,11 @@ namespace lightknight::search {
         std::vector<std::vector<int>> score_lists(kMaxDepth);
         for (std::vector<int>& scores : score_lists)
             scores.reserve(256);
- 
+        
+        // TT aging mechanism.
+        // Increment the current generation of the tt entries.
+        tt.IncrementGeneration();
+
         int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
             stats.selective_depth = 0;
@@ -423,12 +427,14 @@ namespace lightknight::search {
                 }
 
                 // Fail high, beta cutoff.
-                if (tt_entry->bound == TTBound::Lower && tt_score >= beta)
+                if (tt_entry->bound == TTBound::Lower && tt_score >= beta) {
                     return tt_score;
+                }
 
                 // Fail low.
-                if (tt_entry->bound == TTBound::Upper && tt_score <= alpha)
+                if (tt_entry->bound == TTBound::Upper && tt_score <= alpha) {
                     return tt_score;
+                }
             }
         }
 

@@ -16,17 +16,19 @@ namespace lightknight::search {
 
     struct TTEntry {
         uint64_t zobrist = 0;
-        int32_t score = 0;
+        int32_t score = 0; 
         Move move{};
         TTBound bound = TTBound::Exact;
-        uint8_t depth = -1;
+        uint8_t depth = 0;
         bool valid = false;
+        uint8_t generation = 0; // Aging mechanism. 
     };
 
     class TranspositionTable {
     private:
         std::vector<TTEntry> _entries;
-        
+        uint8_t _generation = 0;
+
         size_t Index(uint64_t zobrist) const;
         bool ShouldReplace(
             const TTEntry& old_entry,
@@ -58,6 +60,9 @@ namespace lightknight::search {
             Move move,
             TTBound bound
         );
+
+        uint8_t GetGeneration();
+        void IncrementGeneration();
     };
 } // namespace lightknight::movegen
 
