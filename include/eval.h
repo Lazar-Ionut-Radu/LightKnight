@@ -14,6 +14,10 @@ namespace lightknight::eval {
 
     // TODO: I will work on a tuning method of my own later.    
 
+    // Small bonuses.
+    inline constexpr int kTempoBonus[kNumGamePhases] = {10, 10};
+    inline constexpr int kBishopPairBonus[kNumGamePhases] = {23, 33};
+
     // https://www.chessprogramming.org/Simplified_Evaluation_Function
     inline constexpr int kPieceValues[kNumGamePhases][lightknight::kNumPieces] = {
         { // Midgame
@@ -156,6 +160,34 @@ namespace lightknight::eval {
         }
     };
 
+    // Bonuses / Penalties for mobility of the pieces.
+    inline constexpr int kMobilityBonuses[kNumGamePhases][5][28] = {
+        { // Midgame
+            // Pawn
+            {0},
+            // Knight
+            {-16, -12, -8, -4, 0, 4, 8, 12, 16},
+            // Bishop
+            {-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18},
+            // Rook
+            {-14, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14, 16},
+            // Queen
+            {-14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
+        },
+        { // Endgame
+            // Pawn
+            {0},
+            // Knight
+            {-16, -12, -8, -4, 0, 4, 8, 12, 16},
+            // Bishop
+            {-21, -18, -15, -12, -9, -6, -3, 0, 3, 6, 9, 12, 15, 18},
+            // Rook
+            {-28, -24, -20, -16, -12, -8, -4, 0, 4, 8, 12, 16, 20, 24, 28, 32},
+            // Queen
+            {-28, -26, -24, -22, -20, -18, -16, -14, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26}
+        }
+    };
+
     // https://chessprogramming.org/Tapered_Eval
     // Weights for computing the game phase for tapered eval.
     inline constexpr int kGamePhaseWeights[lightknight::kNumPieces] = {
@@ -165,18 +197,23 @@ namespace lightknight::eval {
         + kGamePhaseWeights[Piece::kWhiteKnight] * 4 + kGamePhaseWeights[Piece::kWhiteBishop] * 4
         + kGamePhaseWeights[Piece::kWhiteRook] * 4 + kGamePhaseWeights[Piece::kWhiteQueen] * 2;
 
-    int ComputeGamePhase(const lightknight::Board& board);
+    int ComputeGamePhase(const Board& board);
     int ComputeWeightedEval(int phase, int mg_eval, int eg_eval);
 
+    template <Piece piece_type>
+    int GetPieceMobility(const Board& board, Square piece_sq);
+    
     // From white's perspective.
-    int EvaluateMaterial(const lightknight::Board& board, GamePhase game_phase);
-    int EvaluateMaterial(const lightknight::Board& board, int phase_weight);
-    int EvaluatePieceSquare(const lightknight::Board& board, GamePhase game_phase);
-    int EvaluatePieceSquare(const lightknight::Board& board, int phase_weight);
+    int EvaluateMaterial(const Board& board, GamePhase game_phase);
+    int EvaluateMaterial(const Board& board, int phase_weight);
+    int EvaluatePieceSquare(const Board& board, GamePhase game_phase);
+    int EvaluatePieceSquare(const Board& board, int phase_weight);
+    int EvaluateMobility(const Board& board, GamePhase game_phase);
+    int EvaluateMobility(const Board& board, int phase_weight);
 
     // From the perspective of the player whose turn it is.
-    int Evaluate(const lightknight::Board& board, GamePhase game_phase);
-    int Evaluate(const lightknight::Board& board);
+    int Evaluate(const Board& board, GamePhase game_phase);
+    int Evaluate(const Board& board);
 } // namespace lightknight::eval
 
 #endif // LIGHTKNIGHT_EVAL_H

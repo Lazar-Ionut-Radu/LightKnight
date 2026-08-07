@@ -2,6 +2,12 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.3.2] - 2026-08-07
+
+### Added
+- Evaluation: Piece mobility.
+- Evaluation: Small bonuses for tempo and having a bishop pair.
+
 ## [0.3.1] - 2026-08-07
 
 ### Added
