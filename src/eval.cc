@@ -5,7 +5,7 @@
 #include "board.h"
 #include "movegen.h"
 
-namespace lightknight::eval {    
+namespace lightknight::eval {
     int ComputeGamePhase(const Board& board) {
         int phase = 0;
 
@@ -62,6 +62,8 @@ namespace lightknight::eval {
     template int GetPieceMobility<Piece::kBlackRook>(const Board&, Square);
     template int GetPieceMobility<Piece::kWhiteQueen>(const Board&, Square);
     template int GetPieceMobility<Piece::kBlackQueen>(const Board&, Square);
+
+    int EvaluatePawn(const Board& board, Square piece_sq);
 
     int EvaluateMaterial(const Board& board, GamePhase game_phase) {
         int eval = 0;

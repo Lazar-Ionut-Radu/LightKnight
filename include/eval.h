@@ -188,6 +188,54 @@ namespace lightknight::eval {
         }
     };
 
+    // Passed pawn bonuses.
+    inline constexpr int kPassedPawnBonuses[kNumGamePhases][lightknight::kNumSquares] = {
+        { // Midgame
+              0,   0,   0,   0,   0,   0,   0,   0,
+             20,  20,  20,  20,  20,  20,  20,  20,
+             20,  20,  20,  20,  20,  20,  20,  20,
+             30,  30,  30,  30,  30,  30,  30,  30,
+             50,  50,  50,  50,  50,  50,  50,  50,
+             75,  75,  75,  75,  75,  75,  75,  75,  
+            100, 100, 100, 100, 100, 100, 100, 100,
+              0,   0,   0,   0,   0,   0,   0,   0
+        },
+        { // Endgame
+              0,   0,   0,   0,   0,   0,   0,   0,
+             20,  20,  20,  20,  20,  20,  20,  20,
+             20,  20,  20,  20,  20,  20,  20,  20,
+             30,  30,  30,  30,  30,  30,  30,  30,
+             50,  50,  50,  50,  50,  50,  50,  50,
+             75,  75,  75,  75,  75,  75,  75,  75,  
+            100, 100, 100, 100, 100, 100, 100, 100,
+              0,   0,   0,   0,   0,   0,   0,   0
+        },
+    };
+
+    // Isolated pawn penalties.
+    inline constexpr int kIsolatedPenalties[kNumGamePhases][lightknight::kNumSquares] = {
+        { // Midgame
+              0,   0,   0,   0,   0,   0,   0,   0,
+             -8, -12, -14, -16, -16, -14, -12, -10,
+             -8, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+              0,   0,   0,   0,   0,   0,   0,   0
+        },
+        { // Endgame
+              0,   0,   0,   0,   0,   0,   0,   0,
+             -8, -12, -14, -16, -16, -14, -12, -10,
+             -8, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+            -10, -12, -14, -16, -16, -14, -12, -10,
+              0,   0,   0,   0,   0,   0,   0,   0
+        }
+    };
+
     // https://chessprogramming.org/Tapered_Eval
     // Weights for computing the game phase for tapered eval.
     inline constexpr int kGamePhaseWeights[lightknight::kNumPieces] = {
@@ -197,9 +245,11 @@ namespace lightknight::eval {
         + kGamePhaseWeights[Piece::kWhiteKnight] * 4 + kGamePhaseWeights[Piece::kWhiteBishop] * 4
         + kGamePhaseWeights[Piece::kWhiteRook] * 4 + kGamePhaseWeights[Piece::kWhiteQueen] * 2;
 
+    // Tapered eval.
     int ComputeGamePhase(const Board& board);
     int ComputeWeightedEval(int phase, int mg_eval, int eg_eval);
 
+    // Helpers.
     template <Piece piece_type>
     int GetPieceMobility(const Board& board, Square piece_sq);
     
