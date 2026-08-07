@@ -11,17 +11,17 @@ In the beginning my goal was just to make something that can beat me at chess. I
 To get a sense of how well everything is coming together I'm keeping track of ELO changes between consecutive versions. I'm running SPRT tests with the help of the [fastchess](https://github.com/Disservin/fastchess) cli tool, using an [opening book](https://github.com/official-stockfish/books/blob/master/8moves_v3.pgn.zip) borrowed from Stockfish.
 
 To make the results more tangible, here's a more intuitive way to put it:
-- $100$ ELO difference: $\sim 64\%$ expected score for the higher-rated player
-- $200$ ELO difference: $\sim 76\%$ expected score for the higher-rated player
-- $300$ ELO difference: $\sim 85\%$ expected score for the higher-rated player
-- $400$ ELO difference: $\sim 91\%$ expected score for the higher-rated player
+- 100 ELO difference: ∼64% expected score for the higher-rated player
+- 200 ELO difference: ∼76% expected score for the higher-rated player
+- 300 ELO difference: ∼85% expected score for the higher-rated player
+- 400 ELO difference: ∼91% expected score for the higher-rated player
 
 
 | Version | Change summary | Time control | ELO diff | W / D / L |
 |:----|:----|:----:|:----:|:----:|
 | v0.1.0 | Initial release | - | - | - |
-| v0.2.0 | MVV-LVA move ordering | $60+0.6$ | $156.84 \pm 27.07$ | $249$ / $131$ / $62$ |
-| v0.3.0 | TT aging. TT retained between moves | $60+0.6$ | $9.38 \pm 13.46$| $264$ / $499$ / $237$ |
+| v0.2.0 | MVV-LVA move ordering | 60+0.6 | 156.84 ± 27.07 | 249 / 131 / 62 |
+| v0.3.0 | TT aging. TT retained between moves | 60+0.6 | 9.38 ± 13.46| 264 / 499 / 237 |
 
 ## UCI Commands
 
