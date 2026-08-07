@@ -101,9 +101,9 @@ namespace lightknight::uci {
     }
 
     void UCI::HandleUci() {
-        this->PrintLine("id name LightKnight v0.3.0");
+        this->PrintLine("id name LightKnight v0.3.1");
         this->PrintLine("id author Lazar Ionut-Radu");
-        
+
         // [TODO] later.
         // this->PrintLine("option name Hash type spin default 16 min 1 max 4096");
 

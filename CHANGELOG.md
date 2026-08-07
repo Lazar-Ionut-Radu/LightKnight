@@ -2,6 +2,14 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.3.1] - 2026-08-07
+
+### Added
+- Game phase calculation for evaluation. Computed by counting material and rescaled to [0, 1024].
+
+### Changed
+- Tapered eval, with values for midgame and endgame that are interpolated between using the phase value.
+
 ## [0.3.0] - 2026-08-07
 
 ### Added
