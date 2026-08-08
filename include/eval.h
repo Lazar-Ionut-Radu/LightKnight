@@ -188,6 +188,7 @@ namespace lightknight::eval {
         }
     };
 
+    // Pawns:
     // Passed pawn bonuses.
     inline constexpr int kPassedPawnBonuses[kNumGamePhases][lightknight::kNumSquares] = {
         { // Midgame
@@ -236,6 +237,28 @@ namespace lightknight::eval {
         }
     };
 
+    // Doubled / Tripled pawns penalties.
+    inline constexpr int kDoubledPawnsPenalty[kNumGamePhases] = {-20, -30};
+    inline constexpr int kTripledPawnsPenalty[kNumGamePhases] = {-50, -70};
+
+    // Pawn connectivity bonuses. (by rank)
+    inline constexpr int kProtectedPawnsBonuses[kNumGamePhases][8] = {
+        { // Midgame
+            0, 0, 3, 5, 5, 8, 10, 0
+        },
+        { // Endgame
+            0, 0, 2, 4, 6, 10, 12, 0
+        }
+    };
+    inline constexpr int kConnectedPawnsBonuses[kNumGamePhases][8] = {
+        { // Midgame
+            0, 1, 2, 2, 3, 5, 7, 0
+        },
+        { // Endgame
+            0, 1, 2, 2, 4, 7, 9, 0
+        }
+    };
+
     // https://chessprogramming.org/Tapered_Eval
     // Weights for computing the game phase for tapered eval.
     inline constexpr int kGamePhaseWeights[lightknight::kNumPieces] = {
@@ -254,7 +277,9 @@ namespace lightknight::eval {
     int GetPieceMobility(const Board& board, Square piece_sq);
     uint64_t PassedPawnsBB(const Board& board, Color color);
     uint64_t IsolatedPawnsBB(const Board& board, Color color);
-
+    uint64_t ProtectedPawnsBB(const Board& board, Color color);
+    uint64_t ConnectedPawnsBB(const Board& board, Color color);
+    
     // From white's perspective.
     int EvaluateMaterial(const Board& board, GamePhase game_phase);
     int EvaluateMaterial(const Board& board, int phase_weight);

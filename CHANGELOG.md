@@ -2,6 +2,14 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.3.3] - 2026-08-08
+
+### Added
+- Evaluation: passed, isolated, doubled, tripled, protected and connected pawns.
+
+### Fixed
+- Internally saving the en passant target square even if there is no piece that can do the capture. Fixes a rare bug where 3-fold repetition is not found.
+
 ## [0.3.2] - 2026-08-07
 
 ### Added
