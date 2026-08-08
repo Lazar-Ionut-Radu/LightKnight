@@ -408,6 +408,7 @@ namespace lightknight {
         if (this->en_passant != 0)
             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
         this->en_passant = 0ull;
+        
         this->halfmoves++;
         if (turn == lightknight::Color::kBlack) {
             this->fullmoves++;
@@ -430,17 +431,27 @@ namespace lightknight {
                 if (undo.captured_piece != lightknight::Piece::kEmpty)
                     this->halfmoves = 0; 
                 
-                // Add en passant square if double pawn move.
+                // Add en passant square if double pawn move and if it actually can be taken.
                 if (is_pawn) {
                     if (turn == lightknight::Color::kWhite && to == (from << 16)) {
-                        this->en_passant = from << 8;
-                        if (this->en_passant != 0)
+                        const uint64_t ep_bb = Backward(to, Color::kWhite);
+                        const uint64_t black_pawns_bb = this->piece_bitboards[Piece::kBlackPawn];
+                        const uint64_t ep_takers = black_pawns_bb & (West(to) | East(to));
+
+                        if (ep_takers) {
+                            this->en_passant = ep_bb;
                             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+                        }
                     }
                     else if (turn == lightknight::Color::kBlack && to == (from >> 16)) {
-                        this->en_passant = from >> 8;
-                        if (this->en_passant != 0)
+                        const uint64_t ep_bb = Backward(to, Color::kBlack);
+                        const uint64_t white_pawns_bb = this->piece_bitboards[Piece::kWhitePawn];
+                        const uint64_t ep_takers = white_pawns_bb & (West(to) | East(to));
+
+                        if (ep_takers) {
+                            this->en_passant = ep_bb;
                             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+                        }
                     }
                 }
 
@@ -566,9 +577,9 @@ namespace lightknight {
         
         if (this->en_passant != 0)
             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+        if (undo.en_passant != 0)
+            this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(undo.en_passant)];
         this->en_passant = undo.en_passant;
-        if (this->en_passant != 0)
-            this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
         
         this->halfmoves = undo.halfmoves;
         this->fullmoves = undo.fullmoves;

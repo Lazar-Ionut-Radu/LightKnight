@@ -76,6 +76,15 @@ namespace lightknight::eval {
                 passed_pawns_bb |= pawn_bb;
         }
 
+        // If a pawn can be taken en passant its not a passed pawn.
+        uint64_t ep_pawn = passed_pawns_bb & Forward(board.en_passant, color);
+        if (ep_pawn) {
+            uint64_t potential_takers = West(ep_pawn) | East(ep_pawn);
+
+            if (potential_takers & enemy_pawns_bb)
+                passed_pawns_bb &= ~ep_pawn;
+        } 
+
         return passed_pawns_bb;
     }
 
