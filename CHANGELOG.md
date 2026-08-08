@@ -2,6 +2,11 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.3.4] - 2026-08-09
+
+### Added
+- Evaluation: small king safety evaluation, pawn shield.
+
 ## [0.3.3] - 2026-08-08
 
 ### Added
