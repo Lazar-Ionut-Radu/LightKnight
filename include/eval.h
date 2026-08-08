@@ -213,7 +213,7 @@ namespace lightknight::eval {
     };
 
     // Isolated pawn penalties.
-    inline constexpr int kIsolatedPenalties[kNumGamePhases][lightknight::kNumSquares] = {
+    inline constexpr int kIsolatedPawnPenalties[kNumGamePhases][lightknight::kNumSquares] = {
         { // Midgame
               0,   0,   0,   0,   0,   0,   0,   0,
              -8, -12, -14, -16, -16, -14, -12, -10,
@@ -252,7 +252,9 @@ namespace lightknight::eval {
     // Helpers.
     template <Piece piece_type>
     int GetPieceMobility(const Board& board, Square piece_sq);
-    
+    uint64_t PassedPawnsBB(const Board& board, Color color);
+    uint64_t IsolatedPawnsBB(const Board& board, Color color);
+
     // From white's perspective.
     int EvaluateMaterial(const Board& board, GamePhase game_phase);
     int EvaluateMaterial(const Board& board, int phase_weight);
@@ -260,6 +262,8 @@ namespace lightknight::eval {
     int EvaluatePieceSquare(const Board& board, int phase_weight);
     int EvaluateMobility(const Board& board, GamePhase game_phase);
     int EvaluateMobility(const Board& board, int phase_weight);
+    int EvaluatePawns(const Board& board, GamePhase game_phase);
+    int EvaluatePawns(const Board& board, int phase_weight);
 
     // From the perspective of the player whose turn it is.
     int Evaluate(const Board& board, GamePhase game_phase);

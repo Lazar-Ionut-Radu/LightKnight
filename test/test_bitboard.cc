@@ -3,6 +3,8 @@
 #include <types.h>
 #include <vector>
 
+using namespace lightknight;
+
 TEST_CASE("Bitboard Directional Movement", "[UnitTest][Bitboard]") {
     SECTION ("North") {
         const std::vector<std::pair<uint64_t, uint64_t>> tests_north = {
@@ -170,5 +172,189 @@ TEST_CASE("Square Rank/File", "[UnitTest][Square]") {
         INFO("Square " << square);
         REQUIRE(lightknight::Rank(square) == square_test_struct.rank);
         REQUIRE(lightknight::File(square) == square_test_struct.file);
+    }
+}
+
+struct BBComputeTests {
+    uint64_t bb;
+    Color color;
+    uint64_t expected_bb;
+};
+
+TEST_CASE("Pawn helper bitboards", "[UnitTest][Bitboard]") {
+    SECTION("Forward/Backward Fill BB") {
+        BBComputeTests tests_f[] = {
+            { 
+                SquareToBitboard(Square::D4),
+                Color::kWhite,
+                0x808080800000000ull
+            },
+            {
+                SquareToBitboard(Square::F6),
+                Color::kBlack,
+                0x2020202020ull
+            },
+        };
+        for (const auto& test : tests_f)
+            REQUIRE(ForwardFillBB(test.bb, test.color) == test.expected_bb);
+    
+        BBComputeTests tests_b[] = {
+            { 
+                SquareToBitboard(Square::D4),
+                Color::kWhite,
+                0x80808ull
+            },
+            {
+                SquareToBitboard(Square::F6),
+                Color::kBlack,
+                0x2020000000000000ull
+            },
+        };
+        for (const auto& test : tests_b)
+            REQUIRE(BackwardFillBB(test.bb, test.color) == test.expected_bb);
+    }
+
+    SECTION("Forward/Backward Adjacent Fill BB") {
+        BBComputeTests tests_fadj[] = {
+            {
+                SquareToBitboard(Square::B3),
+                Color::kWhite,
+                0x505050505000000ull
+            },
+            {
+                SquareToBitboard(Square::A5),
+                Color::kWhite,
+                0x202020000000000ull
+            },
+            {
+                SquareToBitboard(Square::H3),
+                Color::kWhite,
+                0x4040404040000000ull
+            },
+            {
+                SquareToBitboard(Square::E4),
+                Color::kBlack,
+                0x282828ull
+            },
+            {
+                SquareToBitboard(Square::H5),
+                Color::kBlack,
+                0x40404040ull
+            },
+            {
+                SquareToBitboard(Square::A2),
+                Color::kBlack,
+                0x2ull
+            }
+        };
+        for (const auto& test : tests_fadj)
+            REQUIRE(ForwardAdjacentFillBB(test.bb, test.color) == test.expected_bb);
+        
+        BBComputeTests tests_badj[] = {
+            {
+                SquareToBitboard(Square::B3),
+                Color::kWhite,
+                0x505ull
+            },
+            {
+                SquareToBitboard(Square::A5),
+                Color::kWhite,
+                0x2020202ull
+            },
+            {
+                SquareToBitboard(Square::H3),
+                Color::kWhite,
+                0x4040ull
+            },
+            {
+                SquareToBitboard(Square::E4),
+                Color::kBlack,
+                0x2828282800000000ull
+            },
+            {
+                SquareToBitboard(Square::H5),
+                Color::kBlack,
+                0x4040400000000000ull
+            },
+            {
+                SquareToBitboard(Square::A2),
+                Color::kBlack,
+                0x202020202020000ull
+            }
+        };
+        for (const auto& test : tests_badj)
+            REQUIRE(BackwardAdjacentFillBB(test.bb, test.color) == test.expected_bb);
+    }
+
+    SECTION ("Forward/Backward Three Fill BB") {
+        BBComputeTests tests_f3[] = {
+            {
+                SquareToBitboard(Square::B3),
+                Color::kWhite,
+                0x707070707000000ull
+            },
+            {
+                SquareToBitboard(Square::A5),
+                Color::kWhite,
+                0x303030000000000ull
+            },
+            {
+                SquareToBitboard(Square::H3),
+                Color::kWhite,
+                0xc0c0c0c0c0000000ull
+            },
+            {
+                SquareToBitboard(Square::E4),
+                Color::kBlack,
+                0x383838ull
+            },
+            {
+                SquareToBitboard(Square::H5),
+                Color::kBlack,
+                0xc0c0c0c0ull
+            },
+            {
+                SquareToBitboard(Square::A2),
+                Color::kBlack,
+                0x3ull
+            }
+        };
+        for (const auto& test : tests_f3)
+            REQUIRE(ForwardThreeFillBB(test.bb, test.color) == test.expected_bb);
+        
+        BBComputeTests tests_b3[] = {
+            {
+                SquareToBitboard(Square::B3),
+                Color::kWhite,
+                0x707ull
+            },
+            {
+                SquareToBitboard(Square::A5),
+                Color::kWhite,
+                0x3030303ull
+            },
+            {
+                SquareToBitboard(Square::H3),
+                Color::kWhite,
+                0xc0c0ull
+            },
+            {
+                SquareToBitboard(Square::E4),
+                Color::kBlack,
+                0x3838383800000000ull
+            },
+            {
+                SquareToBitboard(Square::H5),
+                Color::kBlack,
+                0xc0c0c00000000000ull
+            },
+            {
+                SquareToBitboard(Square::A2),
+                Color::kBlack,
+                0x303030303030000ull
+            }
+        };
+        for (const auto& test : tests_b3)
+            REQUIRE(BackwardThreeFillBB(test.bb, test.color) == test.expected_bb);
     }
 }

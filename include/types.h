@@ -155,23 +155,22 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . . * . . . .
     //   2  . . . . . . . .                 2  . . . * . . . .
     //   1  . . . . . . . .                 1  . . . * . . . .
-    template<Color color>
-    constexpr uint64_t ForwardFillBB(uint64_t bitboard_sq) {
-        return color 
+    constexpr uint64_t ForwardFillBB(uint64_t bitboard_sq, Color color) {
+        if (!bitboard_sq)
+            return 0ull;
+
+        return (color == Color::kWhite)
             ?  ~(bitboard_sq | (bitboard_sq - 1)) & FileBB(bitboard_sq) 
-            : (bitboard_sq - 1) | FileBB(bitboard_sq);
+            : (bitboard_sq - 1) & FileBB(bitboard_sq);
     }
-    template<Color color>
-    constexpr uint64_t BackwardFillBB(uint64_t bitboard_sq) {
-        return color 
-            ? (bitboard_sq - 1) | FileBB(bitboard_sq) 
+    constexpr uint64_t BackwardFillBB(uint64_t bitboard_sq, Color color) {
+        if (!bitboard_sq)
+            return 0ull;
+        
+        return (color == Color::kWhite)
+            ? (bitboard_sq - 1) & FileBB(bitboard_sq) 
             : ~(bitboard_sq | (bitboard_sq - 1)) & FileBB(bitboard_sq);
     }
-
-    template uint64_t ForwardFillBB<Color::kWhite>(uint64_t);
-    template uint64_t ForwardFillBB<Color::kBlack>(uint64_t);
-    template uint64_t BackwardFillBB<Color::kWhite>(uint64_t);
-    template uint64_t BackwardFillBB<Color::kBlack>(uint64_t);
 
     //   8  . . * . * . . .                 8  . . . . . . . .
     //   7  . . * . * . . .                 7  . . . . . . . .
@@ -181,19 +180,12 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . * . * . . .
     //   2  . . . . . . . .                 2  . . * . * . . .
     //   1  . . . . . . . .                 1  . . * . * . . .
-    template<Color color>
-    constexpr uint64_t ForwardAdjacentFillBB(uint64_t bitboard_sq) {
-        return ForwardFillBB<color>(West(bitboard_sq)) | ForwardFillBB<color>(East(bitboard_sq));
+    constexpr uint64_t ForwardAdjacentFillBB(uint64_t bitboard_sq, Color color) {
+        return ForwardFillBB(West(bitboard_sq), color) | ForwardFillBB(East(bitboard_sq), color);
     }
-    template <Color color>
-    constexpr uint64_t BackwardAdjacentFillBB(uint64_t bitboard_sq) {
-        return BackwardFillBB<color>(West(bitboard_sq)) | BackwardFillBB<color>(East(bitboard_sq));
+    constexpr uint64_t BackwardAdjacentFillBB(uint64_t bitboard_sq, Color color) {
+        return BackwardFillBB(West(bitboard_sq), color) | BackwardFillBB(East(bitboard_sq), color);
     }
-
-    template uint64_t ForwardAdjacentFillBB<Color::kWhite>(uint64_t);
-    template uint64_t ForwardAdjacentFillBB<Color::kBlack>(uint64_t);
-    template uint64_t BackwardAdjacentFillBB<Color::kWhite>(uint64_t);
-    template uint64_t BackwardAdjacentFillBB<Color::kBlack>(uint64_t);
 
     // Examples for the ForwardThreeFillBB.
     //   8  . . * * * . . .                 8  . . . . . . . .
@@ -204,20 +196,13 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . * * * . . .
     //   2  . . . . . . . .                 2  . . * * * . . .
     //   1  . . . . . . . .                 1  . . * * * . . .
-    template<Color color>
-    constexpr uint64_t ForwardThreeFillBB(uint64_t bitboard_sq) {
-        return ForwardFillBB<color>(bitboard_sq) | ForwardAdjacentFillBB<color>(bitboard_sq);
+    constexpr uint64_t ForwardThreeFillBB(uint64_t bitboard_sq, Color color) {
+        return ForwardFillBB(bitboard_sq, color) | ForwardAdjacentFillBB(bitboard_sq, color);
     }
-    template<Color color>
-    constexpr uint64_t BackwardThreeFillBB(uint64_t bitboard_sq) {
-        return BackwardFillBB<color>(bitboard_sq) | BackwardAdjacentFillBB<color>(bitboard_sq);
+    constexpr uint64_t BackwardThreeFillBB(uint64_t bitboard_sq, Color color) {
+        return BackwardFillBB(bitboard_sq, color) | BackwardAdjacentFillBB(bitboard_sq, color);
     }
     
-    template uint64_t ForwardThreeFillBB<Color::kWhite>(uint64_t);
-    template uint64_t ForwardThreeFillBB<Color::kBlack>(uint64_t);
-    template uint64_t BackwardThreeFillBB<Color::kWhite>(uint64_t);
-    template uint64_t BackwardThreeFillBB<Color::kBlack>(uint64_t);
-
     enum PromotionPieceType : uint16_t {
         kKnight,
         kBishop = 1 << 12,

@@ -42,6 +42,7 @@ LightKnight currently supports the following UCI commands:
 
 - <b>Zobrist Hashing and En Passant</b>: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
 
+- En passant is not considered when deciding a pawn is a passed pawn.
 
 ## Compilation
 Building mode is controlled by the ```MODE``` varible, which can be either ```debug``` or ```release```. Debug build retain assertions and debugging information, while release build include optimisation flags. Keep in mind that compiling the engine might take longer than expected because move generation for sliding pieces is precomputed, at compile time.
