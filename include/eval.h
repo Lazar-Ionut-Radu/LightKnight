@@ -259,6 +259,11 @@ namespace lightknight::eval {
         }
     };
 
+    // King:
+    inline constexpr int kKingPawnShieldBonuses[kNumGamePhases][2] = {
+        {8, 4}, // Midgame
+        {0, 0} // Endgame
+    };
     // https://chessprogramming.org/Tapered_Eval
     // Weights for computing the game phase for tapered eval.
     inline constexpr int kGamePhaseWeights[lightknight::kNumPieces] = {
@@ -279,7 +284,7 @@ namespace lightknight::eval {
     uint64_t IsolatedPawnsBB(const Board& board, Color color);
     uint64_t ProtectedPawnsBB(const Board& board, Color color);
     uint64_t ConnectedPawnsBB(const Board& board, Color color);
-    
+
     // From white's perspective.
     int EvaluateMaterial(const Board& board, GamePhase game_phase);
     int EvaluateMaterial(const Board& board, int phase_weight);
@@ -289,6 +294,8 @@ namespace lightknight::eval {
     int EvaluateMobility(const Board& board, int phase_weight);
     int EvaluatePawns(const Board& board, GamePhase game_phase);
     int EvaluatePawns(const Board& board, int phase_weight);
+    int EvaluateKings(const Board& board, GamePhase game_phase);
+    int EvaluateKings(const Board& board, int phase_weight);
 
     // From the perspective of the player whose turn it is.
     int Evaluate(const Board& board, GamePhase game_phase);

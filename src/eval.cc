@@ -278,6 +278,38 @@ namespace lightknight::eval {
         return evaluation;
     }
 
+    int EvaluateKings(const Board& board, GamePhase game_phase) {
+        int evaluation = 0;
+
+        // King pawn shield
+        const uint64_t w_king_bb = board.piece_bitboards[Piece::kWhiteKing];
+        const uint64_t w_pawns_bb = board.piece_bitboards[Piece::kWhitePawn];
+        const uint64_t w_king_shield_close = Forward(w_king_bb, kWhite) 
+            & East(Forward(w_king_bb, kWhite)) 
+            & West(Forward(w_king_bb, kWhite));
+        const uint64_t w_king_shield_far = Forward(w_king_shield_close, kWhite);
+        const int w_shield_cnt = SetBitsCount(w_king_shield_close);
+
+        const uint64_t b_king_bb = board.piece_bitboards[Piece::kBlackKing];
+        const uint64_t b_pawns_bb = board.piece_bitboards[Piece::kBlackPawn];
+        const uint64_t b_king_shield_close = Forward(b_king_bb, kBlack) 
+            & East(Forward(b_king_bb, kBlack)) 
+            & West(Forward(b_king_bb, kBlack));
+        const uint64_t b_king_shield_far = Forward(b_king_shield_close, kBlack);
+        const int b_shield_cnt = SetBitsCount(b_king_shield_close);
+        
+        if (w_shield_cnt) {
+            evaluation += SetBitsCount(w_king_shield_close & w_pawns_bb) * kKingPawnShieldBonuses[game_phase][0] * 3 / w_shield_cnt;
+            evaluation += SetBitsCount(w_king_shield_far & w_pawns_bb) * kKingPawnShieldBonuses[game_phase][1] * 3 / w_shield_cnt;
+        }
+        if (b_shield_cnt) {
+            evaluation -= SetBitsCount(b_king_shield_close & b_pawns_bb) * kKingPawnShieldBonuses[game_phase][0] * 3 / b_shield_cnt;
+            evaluation -= SetBitsCount(b_king_shield_far & b_pawns_bb) * kKingPawnShieldBonuses[game_phase][1] * 3 / b_shield_cnt;
+        }
+        return evaluation;
+    }
+
+
     int EvaluateMaterial(const Board& board, int phase_weight) {
         return ComputeWeightedEval(
             phase_weight,
@@ -318,13 +350,23 @@ namespace lightknight::eval {
         );
     }
 
+    int EvaluateKings(const Board& board, int phase_weight) {
+        return ComputeWeightedEval(
+            phase_weight,
+            EvaluateKings(board, GamePhase::kMG),
+            EvaluateKings(board, GamePhase::kEG)
+        );
+    }
+
+
     int Evaluate(const Board& board, GamePhase game_phase) {
         const int white_relative_score = 
             EvaluateMaterial(board, game_phase) + 
             EvaluatePieceSquare(board, game_phase) +
             EvaluateMobility(board, game_phase) +
             EvaluateSmallBonuses(board, game_phase) +
-            EvaluatePawns(board, game_phase);
+            EvaluatePawns(board, game_phase) +
+            EvaluateKings(board, game_phase);
         
         return board.turn == Color::kWhite
             ? white_relative_score
@@ -338,7 +380,8 @@ namespace lightknight::eval {
             EvaluatePieceSquare(board, phase_weight) +
             EvaluateMobility(board, phase_weight) +
             EvaluateSmallBonuses(board, phase_weight) +
-            EvaluatePawns(board, phase_weight);
+            EvaluatePawns(board, phase_weight) +
+            EvaluateKings(board, phase_weight);
 
         return board.turn == Color::kWhite
             ? white_relative_score
