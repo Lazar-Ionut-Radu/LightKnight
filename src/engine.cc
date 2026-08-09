@@ -8,15 +8,16 @@
 #include <vector>
 
 #include "movegen.h"
+#include "params.h"
 
 namespace lightknight {
     const std::string kStartFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-    Engine::Engine(std::size_t hash_size_mb) {
+    Engine::Engine() 
+        : params(),
+          tt(params.tt_size_mb)
+    {
         this->board.FromFEN(kStartFen);
-        this->_tt = search::TranspositionTable(hash_size_mb);
-
-        this->_hash_size_mb = hash_size_mb;
     }
 
     Engine::~Engine() {
@@ -26,7 +27,7 @@ namespace lightknight {
     void Engine::NewGame() {
         this->StopSearch();
 
-        this->_tt.Clear();
+        this->tt.Clear();
         this->board.FromFEN(kStartFen);
     }
 
@@ -51,17 +52,17 @@ namespace lightknight {
         const int max_depth = std::clamp(limits.max_depth.value_or(search::kMaxDepth), 1, search::kMaxDepth);
 
         // Configure search time.
-        this->_time_control.stopped = false;
-        this->_time_control.calls_until_clock_check = search::kCallsPerClockCheck;
+        this->time_control_struct.stopped = false;
+        this->time_control_struct.calls_until_clock_check = search::kCallsPerClockCheck;
         
         if (limits.time_limit_ms) {
             const int time_limit_ms = std::max(limits.time_limit_ms, 1);
 
-            this->_time_control.deadline = std::chrono::steady_clock::now();
-            this->_time_control.deadline += std::chrono::milliseconds(time_limit_ms);
+            this->time_control_struct.deadline = std::chrono::steady_clock::now();
+            this->time_control_struct.deadline += std::chrono::milliseconds(time_limit_ms);
         } else {
             // No time limit -> infinite time basically
-            this->_time_control.deadline = std::chrono::steady_clock::time_point::max();
+            this->time_control_struct.deadline = std::chrono::steady_clock::time_point::max();
         }
 
         // Start the search thread.
@@ -75,10 +76,10 @@ namespace lightknight {
             ]() mutable {
                 // Search
                 search::SearchStats stats{};
-                search::IterativeDeepening(board, max_depth, this->_tt, this->_time_control, stats, print_search_info_fn);
+                search::IterativeDeepening(board, max_depth, params, tt, time_control_struct, stats, print_search_info_fn);
 
                 // Get the best move
-                search::TTEntry* tt_entry = this->_tt.Probe(board.zobrist_hash);
+                search::TTEntry* tt_entry = this->tt.Probe(board.zobrist_hash);
                 Move move{};
                 if (tt_entry)
                     move = tt_entry->move;
@@ -90,7 +91,7 @@ namespace lightknight {
     }
 
     void Engine::StopSearch() {
-        this->_time_control.stopped = true;
+        this->time_control_struct.stopped = true;
 
         if (_search_thread.joinable())
             _search_thread.join();

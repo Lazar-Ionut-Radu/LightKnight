@@ -122,17 +122,18 @@ namespace lightknight::eval {
             SouthEast(pawns_bb) | SouthWest(pawns_bb));
     }
 
-    int EvaluateMaterial(const Board& board, GamePhase game_phase) {
+
+    int EvaluateMaterial_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int eval = 0;
 
         for (size_t piece = 0; piece < lightknight::kNumPieces - 1; ++piece) {
-            eval += kPieceValues[game_phase][piece] * SetBitsCount(board.piece_bitboards[piece]);
+            eval += params.eval_piece_values[game_phase][piece] * SetBitsCount(board.piece_bitboards[piece]);
         }
 
         return eval;
     }
 
-    int EvaluatePieceSquare(const Board& board, GamePhase game_phase) {
+    int EvaluatePieceSquare_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int evaluation = 0;
 
         for (size_t piece = 0; piece < lightknight::kNumPieces - 1; ++piece) {
@@ -146,7 +147,7 @@ namespace lightknight::eval {
                 const lightknight::Square square = BitboardToSquare(square_bb);
                 const lightknight::Square table_square = (color == lightknight::Color::kWhite) ? square : MirrorVertically(square);
 
-                const int square_value = kPieceSquareTables[game_phase][piece_idx][table_square];
+                const int square_value = params.eval_psqt[game_phase][piece_idx][table_square];
 
                 evaluation += color == lightknight::Color::kWhite ? square_value : -square_value;
                 piece_bb &= ~square_bb;
@@ -156,54 +157,54 @@ namespace lightknight::eval {
         return evaluation;
     }
 
-    int EvaluateMobility(const Board& board, GamePhase game_phase) {
+    int EvaluateMobility_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int evaluation = 0;
         
         // Knights
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kWhiteKnight]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation += kMobilityBonuses[game_phase][1][GetPieceMobility<Piece::kWhiteKnight>(board, LSBSquare(piece_bb))];
+            evaluation += params.eval_mobility[game_phase][1][GetPieceMobility<Piece::kWhiteKnight>(board, LSBSquare(piece_bb))];
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kBlackKnight]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation -= kMobilityBonuses[game_phase][1][GetPieceMobility<Piece::kBlackKnight>(board, LSBSquare(piece_bb))];
+            evaluation -= params.eval_mobility[game_phase][1][GetPieceMobility<Piece::kBlackKnight>(board, LSBSquare(piece_bb))];
         
         // Bishops
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kWhiteBishop]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation += kMobilityBonuses[game_phase][2][GetPieceMobility<Piece::kWhiteBishop>(board, LSBSquare(piece_bb))];
+            evaluation += params.eval_mobility[game_phase][2][GetPieceMobility<Piece::kWhiteBishop>(board, LSBSquare(piece_bb))];
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kBlackBishop]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation -= kMobilityBonuses[game_phase][2][GetPieceMobility<Piece::kBlackBishop>(board, LSBSquare(piece_bb))];
+            evaluation -= params.eval_mobility[game_phase][2][GetPieceMobility<Piece::kBlackBishop>(board, LSBSquare(piece_bb))];
         
         // Rooks
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kWhiteRook]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation += kMobilityBonuses[game_phase][3][GetPieceMobility<Piece::kWhiteRook>(board, LSBSquare(piece_bb))];
+            evaluation += params.eval_mobility[game_phase][3][GetPieceMobility<Piece::kWhiteRook>(board, LSBSquare(piece_bb))];
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kBlackRook]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation -= kMobilityBonuses[game_phase][3][GetPieceMobility<Piece::kBlackRook>(board, LSBSquare(piece_bb))];
+            evaluation -= params.eval_mobility[game_phase][3][GetPieceMobility<Piece::kBlackRook>(board, LSBSquare(piece_bb))];
         
         // Queens
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kWhiteQueen]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation += kMobilityBonuses[game_phase][4][GetPieceMobility<Piece::kWhiteQueen>(board, LSBSquare(piece_bb))];
+            evaluation += params.eval_mobility[game_phase][4][GetPieceMobility<Piece::kWhiteQueen>(board, LSBSquare(piece_bb))];
         for (uint64_t piece_bb = board.piece_bitboards[Piece::kBlackQueen]; piece_bb != 0; piece_bb &= ~LSB(piece_bb))
-            evaluation -= kMobilityBonuses[game_phase][4][GetPieceMobility<Piece::kBlackQueen>(board, LSBSquare(piece_bb))];
+            evaluation -= params.eval_mobility[game_phase][4][GetPieceMobility<Piece::kBlackQueen>(board, LSBSquare(piece_bb))];
     
         return evaluation;
     }
 
-    int EvaluateSmallBonuses(const Board& board, GamePhase game_phase) {
+    int EvaluateSmallBonuses_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int evaluation = 0;
         
         // Tempo.
-        evaluation += (board.turn == Color::kWhite) ? kTempoBonus[game_phase] : -kTempoBonus[game_phase];
+        evaluation += (board.turn == Color::kWhite) ? params.eval_tempo[game_phase] : -params.eval_tempo[game_phase];
 
         // Bishop Pair.
         // Technically this is wrong because you may have only 2 bishops of the same color but
         // should not happen much, bishop promotions shouldn't happen much lol.
         if (SetBitsCount(board.piece_bitboards[Piece::kWhiteBishop]) > 1)
-            evaluation += kBishopPairBonus[game_phase];
+            evaluation += params.eval_bishop_pair[game_phase];
         if (SetBitsCount(board.piece_bitboards[Piece::kBlackBishop]) > 1)
-            evaluation -= kBishopPairBonus[game_phase];
+            evaluation -= params.eval_bishop_pair[game_phase];
         
         return evaluation; 
     }
 
-    int EvaluatePawns(const Board& board, GamePhase game_phase) {
+    int EvaluatePawns_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int evaluation = 0;
 
         // Passed pawn bonus        
@@ -212,11 +213,11 @@ namespace lightknight::eval {
 
         for (uint64_t bb = white_passed_pawns_bb; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
-            evaluation += kPassedPawnBonuses[game_phase][pawn_sq];
+            evaluation += params.eval_passed_pawns[game_phase][pawn_sq];
         }
         for (uint64_t bb = black_passed_pawns_bb; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
-            evaluation -= kPassedPawnBonuses[game_phase][MirrorVertically(pawn_sq)];
+            evaluation -= params.eval_passed_pawns[game_phase][MirrorVertically(pawn_sq)];
         }
 
         // Isolated pawn penalty
@@ -225,11 +226,11 @@ namespace lightknight::eval {
     
         for (uint64_t bb = white_isolated_pawns_bb; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
-            evaluation += kIsolatedPawnPenalties[game_phase][pawn_sq];
+            evaluation += params.eval_isolated_pawns[game_phase][pawn_sq];
         }
         for (uint64_t bb = black_isolated_pawns_bb; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
-            evaluation -= kIsolatedPawnPenalties[game_phase][MirrorVertically(pawn_sq)];
+            evaluation -= params.eval_isolated_pawns[game_phase][MirrorVertically(pawn_sq)];
         }
         
         // Doubled / Tripled pawns penalty.
@@ -241,10 +242,10 @@ namespace lightknight::eval {
                 int num_pawns = SetBitsCount(pawns & kFiles[file]);
 
                 if (num_pawns == 2) {
-                    evaluation += kDoubledPawnsPenalty[game_phase] * weight;
+                    evaluation += params.eval_doubled_pawns[game_phase] * weight;
                 }
                 else if (num_pawns > 2) {
-                    evaluation += kTripledPawnsPenalty[game_phase] * weight;
+                    evaluation += params.eval_tripled_pawns[game_phase] * weight;
                 }
             }
         }
@@ -255,11 +256,11 @@ namespace lightknight::eval {
 
         for (uint64_t bb = white_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
-            evaluation += kConnectedPawnsBonuses[game_phase][pawn_rank];
+            evaluation += params.eval_connected_pawn[game_phase][pawn_rank];
         }
         for (uint64_t bb = black_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
-            evaluation -= kConnectedPawnsBonuses[game_phase][pawn_rank];
+            evaluation -= params.eval_connected_pawn[game_phase][pawn_rank];
         }
 
         // Protected pawns bonus.
@@ -268,17 +269,17 @@ namespace lightknight::eval {
 
         for (uint64_t bb = white_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
-            evaluation += kProtectedPawnsBonuses[game_phase][pawn_rank];
+            evaluation += params.eval_protected_pawn[game_phase][pawn_rank];
         }
         for (uint64_t bb = black_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
-            evaluation -= kProtectedPawnsBonuses[game_phase][pawn_rank];
+            evaluation -= params.eval_protected_pawn[game_phase][pawn_rank];
         }
 
         return evaluation;
     }
 
-    int EvaluateKings(const Board& board, GamePhase game_phase) {
+    int EvaluateKings_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         int evaluation = 0;
 
         // King pawn shield
@@ -287,6 +288,7 @@ namespace lightknight::eval {
         const uint64_t w_king_shield_close = Forward(w_king_bb, kWhite) 
             & East(Forward(w_king_bb, kWhite)) 
             & West(Forward(w_king_bb, kWhite));
+
         const uint64_t w_king_shield_far = Forward(w_king_shield_close, kWhite);
         const int w_shield_cnt = SetBitsCount(w_king_shield_close);
 
@@ -295,93 +297,94 @@ namespace lightknight::eval {
         const uint64_t b_king_shield_close = Forward(b_king_bb, kBlack) 
             & East(Forward(b_king_bb, kBlack)) 
             & West(Forward(b_king_bb, kBlack));
+
         const uint64_t b_king_shield_far = Forward(b_king_shield_close, kBlack);
         const int b_shield_cnt = SetBitsCount(b_king_shield_close);
         
         if (w_shield_cnt) {
-            evaluation += SetBitsCount(w_king_shield_close & w_pawns_bb) * kKingPawnShieldBonuses[game_phase][0] * 3 / w_shield_cnt;
-            evaluation += SetBitsCount(w_king_shield_far & w_pawns_bb) * kKingPawnShieldBonuses[game_phase][1] * 3 / w_shield_cnt;
+            evaluation += SetBitsCount(w_king_shield_close & w_pawns_bb) * params.eval_king_pawn_shield[game_phase][0] * 3 / w_shield_cnt;
+            evaluation += SetBitsCount(w_king_shield_far & w_pawns_bb) * params.eval_king_pawn_shield[game_phase][1] * 3 / w_shield_cnt;
         }
         if (b_shield_cnt) {
-            evaluation -= SetBitsCount(b_king_shield_close & b_pawns_bb) * kKingPawnShieldBonuses[game_phase][0] * 3 / b_shield_cnt;
-            evaluation -= SetBitsCount(b_king_shield_far & b_pawns_bb) * kKingPawnShieldBonuses[game_phase][1] * 3 / b_shield_cnt;
+            evaluation -= SetBitsCount(b_king_shield_close & b_pawns_bb) * params.eval_king_pawn_shield[game_phase][0] * 3 / b_shield_cnt;
+            evaluation -= SetBitsCount(b_king_shield_far & b_pawns_bb) * params.eval_king_pawn_shield[game_phase][1] * 3 / b_shield_cnt;
         }
         return evaluation;
     }
 
 
-    int EvaluateMaterial(const Board& board, int phase_weight) {
+    int EvaluateMaterial(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluateMaterial(board, GamePhase::kMG),
-            EvaluateMaterial(board, GamePhase::kEG)
+            EvaluateMaterial_(board, GamePhase::kMG, params),
+            EvaluateMaterial_(board, GamePhase::kEG, params)
         );
     }
 
-    int EvaluatePieceSquare(const Board& board, int phase_weight) {
+    int EvaluatePieceSquare(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluatePieceSquare(board, GamePhase::kMG),
-            EvaluatePieceSquare(board, GamePhase::kEG)
+            EvaluatePieceSquare_(board, GamePhase::kMG, params),
+            EvaluatePieceSquare_(board, GamePhase::kEG, params)
         );
     }
 
-    int EvaluateMobility(const Board& board, int phase_weight) {
+    int EvaluateMobility(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluateMobility(board, GamePhase::kMG),
-            EvaluateMobility(board, GamePhase::kEG)
+            EvaluateMobility_(board, GamePhase::kMG, params),
+            EvaluateMobility_(board, GamePhase::kEG, params)
         );
     }
 
-    int EvaluateSmallBonuses(const Board& board, int phase_weight) {
+    int EvaluateSmallBonuses(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluateSmallBonuses(board, GamePhase::kMG),
-            EvaluateSmallBonuses(board, GamePhase::kEG)
+            EvaluateSmallBonuses_(board, GamePhase::kMG, params),
+            EvaluateSmallBonuses_(board, GamePhase::kEG, params)
         );
     };
 
-    int EvaluatePawns(const Board& board, int phase_weight) {
+    int EvaluatePawns(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluatePawns(board, GamePhase::kMG),
-            EvaluatePawns(board, GamePhase::kEG)
+            EvaluatePawns_(board, GamePhase::kMG, params),
+            EvaluatePawns_(board, GamePhase::kEG, params)
         );
     }
 
-    int EvaluateKings(const Board& board, int phase_weight) {
+    int EvaluateKings(const Board& board, int phase_weight, const params::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
-            EvaluateKings(board, GamePhase::kMG),
-            EvaluateKings(board, GamePhase::kEG)
+            EvaluateKings_(board, GamePhase::kMG, params),
+            EvaluateKings_(board, GamePhase::kEG, params)
         );
     }
 
 
-    int Evaluate(const Board& board, GamePhase game_phase) {
+    int Evaluate_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
         const int white_relative_score = 
-            EvaluateMaterial(board, game_phase) + 
-            EvaluatePieceSquare(board, game_phase) +
-            EvaluateMobility(board, game_phase) +
-            EvaluateSmallBonuses(board, game_phase) +
-            EvaluatePawns(board, game_phase) +
-            EvaluateKings(board, game_phase);
+            EvaluateMaterial_(board, game_phase, params) + 
+            EvaluatePieceSquare_(board, game_phase, params) +
+            EvaluateMobility_(board, game_phase, params) +
+            EvaluateSmallBonuses_(board, game_phase, params) +
+            EvaluatePawns_(board, game_phase, params) +
+            EvaluateKings_(board, game_phase, params);
         
         return board.turn == Color::kWhite
             ? white_relative_score
             : -white_relative_score;
     }
 
-    int Evaluate(const Board& board) {
+    int Evaluate(const Board& board, const params::EngineParameters& params) {
         const int phase_weight = ComputeGamePhase(board);
         const int white_relative_score = 
-            EvaluateMaterial(board, phase_weight) + 
-            EvaluatePieceSquare(board, phase_weight) +
-            EvaluateMobility(board, phase_weight) +
-            EvaluateSmallBonuses(board, phase_weight) +
-            EvaluatePawns(board, phase_weight) +
-            EvaluateKings(board, phase_weight);
+            EvaluateMaterial(board, phase_weight, params) + 
+            EvaluatePieceSquare(board, phase_weight, params) +
+            EvaluateMobility(board, phase_weight, params) +
+            EvaluateSmallBonuses(board, phase_weight, params) +
+            EvaluatePawns(board, phase_weight, params) +
+            EvaluateKings(board, phase_weight, params);
 
         return board.turn == Color::kWhite
             ? white_relative_score

@@ -37,7 +37,7 @@ namespace lightknight::search {
         ) const;
 
     public:
-        explicit TranspositionTable(size_t size_mb = 16) {
+        explicit TranspositionTable(size_t size_mb = 256) {
             this->ResizeMB(size_mb);
         }
 

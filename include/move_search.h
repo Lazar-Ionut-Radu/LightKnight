@@ -9,6 +9,7 @@
 #include "types.h"
 #include "board.h"
 #include "transposition_table.h"
+#include "params.h"
 
 namespace lightknight::search {
     inline constexpr int kInfinity = 128'000;
@@ -69,6 +70,7 @@ namespace lightknight::search {
     int IterativeDeepening(
         Board& board,
         int max_depth,
+        const params::EngineParameters& params,
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& search_stats,
@@ -83,7 +85,8 @@ namespace lightknight::search {
         int max_depth, // Max search depth.
         int depth, // Current depth.
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
-        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores. 
+        std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
+        const params::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -97,6 +100,7 @@ namespace lightknight::search {
         int depth,
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
+        const params::EngineParameters& params,
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& stats

@@ -114,6 +114,7 @@ namespace lightknight::search {
     int IterativeDeepening(
         Board& board,
         int max_depth,
+        const params::EngineParameters& params,
         TranspositionTable& tt, 
         TimeControlStruct& time_control,
         SearchStats& stats,
@@ -143,7 +144,7 @@ namespace lightknight::search {
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
             stats.selective_depth = 0;
 
-            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, tt, time_control, stats);
+            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, params, tt, time_control, stats);
     
             if (time_control.stopped)
                 break;
@@ -177,6 +178,7 @@ namespace lightknight::search {
         int depth, // Current depth.
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
+        const params::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -203,7 +205,7 @@ namespace lightknight::search {
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
-            return eval::Evaluate(board);
+            return eval::Evaluate(board, params);
         }
 
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
@@ -248,7 +250,7 @@ namespace lightknight::search {
         // Basecase:
         // Reaching the max depth of this search.
         if (depth >= max_depth) {
-            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, tt, time_control, stats);
+            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, params, tt, time_control, stats);
         }
 
         // Generate moves.
@@ -301,17 +303,17 @@ namespace lightknight::search {
             board.MakeMove(move, undo);
             if (first_move) {
                 // Full search
-                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
                 first_move = false;
             } else {
                 // Zero-window search.
-                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
             }
             board.UnmakeMove(move, undo);
             
@@ -366,6 +368,7 @@ namespace lightknight::search {
         int depth,
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
+        const params::EngineParameters& params,
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -400,7 +403,7 @@ namespace lightknight::search {
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
-            return eval::Evaluate(board);
+            return eval::Evaluate(board, params);
         }
 
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
@@ -470,7 +473,7 @@ namespace lightknight::search {
             }
 
             // Basecase: Quiet position.
-            const int score = eval::Evaluate(board);
+            const int score = eval::Evaluate(board, params);
 
             tt.Store(zobrist_hash, score, 0, Move{}, TTBound::Exact);
             return score;
@@ -487,7 +490,7 @@ namespace lightknight::search {
         // Standing pat
         // Allow the search to stop if subsequent captures lead to worse positions.
         if (!in_check) {
-            const int stand_pat = eval::Evaluate(board);
+            const int stand_pat = eval::Evaluate(board, params);
             best_score = stand_pat;
 
             // Return if doing nothing (no capture I mean) is better.
@@ -531,17 +534,17 @@ namespace lightknight::search {
             board.MakeMove(move, undo);
             if (first_move) {
                 // Full search
-                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
                 first_move = false;
             } else {
                 // Zero-window search.
-                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, score_lists, tt, time_control, stats);
+                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
             }
             board.UnmakeMove(move, undo);
 
@@ -611,6 +614,7 @@ namespace lightknight::search {
         int,
         std::vector<std::vector<Move>>&,
         std::vector<std::vector<int>>&,
+        const params::EngineParameters&,
         TranspositionTable&,
         TimeControlStruct&,
         SearchStats&
@@ -624,6 +628,7 @@ namespace lightknight::search {
         int,
         std::vector<std::vector<Move>>&,
         std::vector<std::vector<int>>&,
+        const params::EngineParameters&,
         TranspositionTable&,
         TimeControlStruct&,
         SearchStats&

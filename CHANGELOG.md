@@ -2,6 +2,11 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## Unreleased
+
+### Changed
+- Refactored engine parameters into their own file (params.*). They are now owned by the engine class and given to the search / eval functions explicitly.
+
 ## [0.3.4] - 2026-08-09
 
 ### Added

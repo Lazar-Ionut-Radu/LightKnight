@@ -9,10 +9,11 @@
 #include "board.h"
 #include "move_search.h"
 #include "transposition_table.h"
+#include "params.h"
 
 namespace lightknight {
-
     const int kDefaultHashSizeMB = 256;
+
     struct SearchLimits {
         // Search no deeper than this depth.
         std::optional<int> max_depth;
@@ -35,7 +36,7 @@ namespace lightknight {
         using BestMoveCallback = std::function<void(Move)>;
 
         // Constructor destructor.
-        explicit Engine(size_t hash_size_mb = kDefaultHashSizeMB);
+        explicit Engine();
         ~Engine();
 
         // No copying.
@@ -50,12 +51,13 @@ namespace lightknight {
         
     private:
         // Everything making up the search algorithm.
-        search::TranspositionTable _tt;
-        search::TimeControlStruct _time_control;
+        search::TranspositionTable tt;
+        search::TimeControlStruct time_control_struct;
 
         // Engine options
-        size_t _hash_size_mb;
+        params::EngineParameters params;
 
+        // Separate search thread from the UCI handling thread.
         std::thread _search_thread;  
     };
 } // namespace lightknight
