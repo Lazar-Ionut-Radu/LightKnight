@@ -116,8 +116,8 @@ clean:
 # Magics generator executable
 # -------------------------------------------------------------------
 
-MAGICS_SRC := helpers/magics-gen/magics_gen.cc
-MAGICS_OBJ := $(BUILD_DIR)/helpers/magics-gen/magics_gen.o
+MAGICS_SRC := tools/magics-gen/magics_gen.cc
+MAGICS_OBJ := $(BUILD_DIR)/tools/magics-gen/magics_gen.o
 MAGICS_EXE := $(BUILD_DIR)/magics-gen
 
 $(MAGICS_EXE): $(MAGICS_OBJ)
@@ -130,8 +130,8 @@ magics: $(MAGICS_EXE)
 # Perft debug executable
 # -------------------------------------------------------------------
 
-PERFT_DEBUG_SRC := helpers/perft_debug/perft_debug.cc
-PERFT_DEBUG_OBJ := $(BUILD_DIR)/helpers/perft_debug/perft_debug.o
+PERFT_DEBUG_SRC := tools/perft_debug/perft_debug.cc
+PERFT_DEBUG_OBJ := $(BUILD_DIR)/tools/perft_debug/perft_debug.o
 
 PERFT_DEBUG_ENGINE_SRC := $(ENGINE_LIB_SRC)
 PERFT_DEBUG_ENGINE_OBJ := \
