@@ -5,7 +5,16 @@ All notable changes to LightKnight are documented in this file.
 ## Unreleased
 
 ### Changed
-- Refactored engine parameters into their own file (params.*). They are now owned by the engine class and given to the search / eval functions explicitly.
+- Refactored engine parameters into their own file (params.h/params.cc). They are now owned by the engine class and given to the search / eval functions explicitly.
+
+### Added
+- Functions to save/load parameters from a .csv file.
+- UCI option and setoptions command support.
+- The following options:
+    - Hash: for setting the transposition table size in MB
+    - ParametersFile: specify path to the .csv file containing parameters
+    - SaveParameters
+    - LoadParameters
 
 ## [0.3.4] - 2026-08-09
 

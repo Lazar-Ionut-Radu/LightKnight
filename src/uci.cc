@@ -96,7 +96,7 @@ namespace lightknight::uci {
             this->_engine.StopSearch();
         }
         else {
-            PrintLine("info string unknown command: " + line);
+            PrintLine("info string Unknown command: '" + line + "'");
         }
     }
 
@@ -104,14 +104,80 @@ namespace lightknight::uci {
         this->PrintLine("id name LightKnight v0.3.4");
         this->PrintLine("id author Lazar Ionut-Radu");
 
-        // [TODO] later.
-        // this->PrintLine("option name Hash type spin default 16 min 1 max 4096");
+        // Print out the engine's options.
+        for (const Option& option : _engine.GetOptions()) {
+            std::stringstream ss;
+            ss << "option name " << option.name;
+
+            switch (option.type) {
+                case OptionType::kButton:
+                    ss << " type button";
+                    break;
+
+                case OptionType::kCheck:
+                    ss << " type check"
+                    << " default " << option.default_value;
+                    break;
+
+                case OptionType::kSpin:
+                    ss << " type spin"
+                    << " default " << option.default_value
+                    << " min " << option.min
+                    << " max " << option.max;
+                    break;
+
+                case OptionType::kString:
+                    ss << " type string"
+                    << " default " << option.default_value;
+                    break;
+
+                case OptionType::kCombo:
+                    ss << " type combo"
+                    << " default " << option.default_value;
+
+                    for (const std::string& var : option.vars)
+                        ss << " var " << var;
+
+                    break;
+            }
+            PrintLine(ss.str());
+        }
 
         this->PrintLine("uciok");
     }
 
     void UCI::HandleSetOption(const std::string& line) {
-        // [TODO] later
+        std::stringstream ss(line);
+
+        std::string token;
+        std::string name;
+        std::string value;
+
+        // "setoption" was already consumed by UCI::Loop()
+        ss >> token; // "setoption"
+        ss >> token; // "name"
+
+        // Read option name until "value" or end of line.
+        while (ss >> token) {
+            if (token == "value")
+                break;
+
+            if (!name.empty())
+                name += ' ';
+            name += token;
+        }
+
+        // The rest is the value.
+        std::getline(ss, value);
+        value = Trim(value);
+
+        _engine.SetOption(
+            name,
+             value,
+            [this](const std::string& info) {
+                this->PrintLine("info string " + info);
+            }
+        );
     }
 
     void UCI::HandleNewGame() {
@@ -132,7 +198,7 @@ namespace lightknight::uci {
         stream >> command >> position_type;
 
         if (position_type.empty()) {
-            PrintLine("info string malformed position command");
+            PrintLine("info string Malformed position command");
             return;
         }
 
@@ -148,7 +214,7 @@ namespace lightknight::uci {
                 // Read the 6 parts of the fen.
                 for (int i = 0; i < 6; ++i) {
                     if (!(stream >> fen_part)) {
-                        this->PrintLine("info string incomplete FEN");
+                        this->PrintLine("info string Incomplete FEN");
                         return;
                     }
 
@@ -160,12 +226,12 @@ namespace lightknight::uci {
                 new_board.FromFEN(fen);
             }
             else {
-                this->PrintLine("info string unknown position type: " + position_type);
+                this->PrintLine("info string Unknown position type: '" + position_type + "'");
                 return;
             }
         }
         catch (const exceptions::FENException& exception) {
-            this->PrintLine(std::string("info string invalid FEN: ") + exception.what());
+            this->PrintLine(std::string("info string Invalid FEN: ") + exception.what());
             return;
         }
 
@@ -173,7 +239,7 @@ namespace lightknight::uci {
         std::string token;
         if (stream >> token) {
             if (token != "moves") {
-                this->PrintLine("info string expected moves, got: " + token);
+                this->PrintLine("info string Expected moves, got: '" + token + "'");
                 return;
             }
         }
@@ -184,7 +250,7 @@ namespace lightknight::uci {
             const std::optional<Move> move = FindLegalMove(new_board, move_string);
 
             if (!move.has_value()) {
-                this->PrintLine("info string illegal move: " + move_string);
+                this->PrintLine("info string Illegal move: '" + move_string + "'");
                 return;
             }
 
@@ -362,5 +428,4 @@ namespace lightknight::uci {
         // Print all of this.
         this->PrintLine(output.str());
     }
-
 } // namespace lightknight::uci

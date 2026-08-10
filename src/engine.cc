@@ -15,9 +15,32 @@ namespace lightknight {
 
     Engine::Engine() 
         : params(),
-          tt(params.tt_size_mb)
+          tt(kDefaultHashSizeMB)
     {
         this->board.FromFEN(kStartFen);
+
+        this->_options = {
+            { // Transposition table size.
+                .name = "Hash",
+                .type = OptionType::kSpin,
+                .default_value = std::to_string(kDefaultHashSizeMB),
+                .min = 1,
+                .max = 1024
+            },
+            { // Set a parameters file internally to write to / read from.
+                .name = "ParametersFile",
+                .type = OptionType::kString,
+                .default_value = kDefaultParamFilePath
+            },
+            { // Load parameters from the file specified by option "Parameters File".
+                .name = "LoadParameters",
+                .type = OptionType::kButton
+            },
+            { // Save parameters to a file specified by option "Parameters File"
+                .name = "SaveParameters",
+                .type = OptionType::kButton
+            }
+        };
     }
 
     Engine::~Engine() {
@@ -97,11 +120,96 @@ namespace lightknight {
             _search_thread.join();
     }
 
+    const std::vector<Option>& Engine::GetOptions() const {
+        return this->_options;
+    }
+
+    void Engine::SetOption(const std::string& name, const std::string& value, InfoStringCallback print_info_fn) {
+        // Search the option by name
+        Option* option = nullptr;
+
+        for (Option& curr_option : this->_options) {
+            if (curr_option.name == name) {
+                option = &curr_option;
+                break;
+            }
+        }
+
+        // Option not found.
+        if (!option) {
+            print_info_fn("Unknown option: '" + name + "'");
+            return;
+        }
+        
+        // Invalid value.
+        if (!IsOptionValueValid(*option, value)) {
+            print_info_fn("Invalid value '" + value + "' for option '" + name + "'");
+            return;
+        }
+
+        // Set the options. 
+        if (name == "Hash") {
+            this->StopSearch();
+
+            this->params.tt_size_mb = std::stoi(value);
+            this->tt.ResizeMB(this->params.tt_size_mb);
+        }
+        else if(name == "ParametersFile") {
+            this->params_file_path = value;
+        }
+        else if (name == "LoadParameters") {
+            this->StopSearch();
+            this->LoadParameters(this->params_file_path);
+        }
+        else if (name == "SaveParameters") {
+            SaveParameters(this->params_file_path);
+        }
+        
+    }
+
+    bool Engine::IsOptionValueValid(const Option& option, const std::string& value) {
+        switch (option.type) {
+            case OptionType::kButton:
+                return value.empty();
+
+            case OptionType::kString:
+                return true;
+
+            case OptionType::kCheck:
+                return value == "true" || value == "false";
+
+            case OptionType::kSpin:
+                try {
+                    size_t num_digits;
+                    int number = std::stoi(value, &num_digits);
+
+                    // Make sure the entire string was consumed.
+                    if (num_digits != value.size())
+                        return false;
+
+                    return number >= option.min && number <= option.max;
+                }
+                catch (...) {
+                    return false;
+                }
+        
+            case OptionType::kCombo:
+                return std::find(
+                    option.vars.begin(),
+                    option.vars.end(),
+                    value
+                ) != option.vars.end();
+                
+            default:
+                return false;
+        }
+    }
+        
     void Engine::SaveParameters(const std::string& path) {
-        parameters::SaveParameters(params, path);
+        parameters::SaveParameters(this->params, path);
     }
 
     void Engine::LoadParameters(const std::string& path) {
-        parameters::LoadParameters(params, path);
+        parameters::LoadParameters(this->params, path);
     }
 } // namespace lightknight

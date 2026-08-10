@@ -9,9 +9,6 @@
 
 int main()
 {
-    lightknight::Engine engine = lightknight::Engine();
-    engine.SaveParameters("params.csv");
-
     lightknight::uci::UCI uci;
     uci.Loop();
     

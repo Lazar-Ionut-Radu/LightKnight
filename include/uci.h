@@ -57,7 +57,7 @@ namespace lightknight::uci {
         void HandleNewGame();
         void HandlePosition(const std::string& line);
         void HandleGo(const std::string& line);
-
+        
         // Convert string to Move type if the move is legal in the position.
         std::optional<Move> FindLegalMove(Board& board, const std::string& move_string) const;
 

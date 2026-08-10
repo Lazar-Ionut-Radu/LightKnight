@@ -12,7 +12,9 @@
 #include "params.h"
 
 namespace lightknight {
+    // Default engine params.
     const int kDefaultHashSizeMB = 256;
+    const std::string kDefaultParamFilePath = "params.csv";
 
     struct SearchLimits {
         // Search no deeper than this depth.
@@ -25,6 +27,26 @@ namespace lightknight {
         int time_limit_ms;
     };
 
+    enum class OptionType {
+        kCheck,
+        kSpin,
+        kString,
+        kCombo,
+        kButton
+    };
+
+    struct Option {
+        std::string name;
+        OptionType type;
+
+        // Relevant for particular types.
+        std::string default_value;
+        int min = 0;
+        int max = 0;
+
+        std::vector<std::string> vars;
+    };
+
     class Engine {
     public:
         // TODO: I should really make this private
@@ -34,7 +56,8 @@ namespace lightknight {
         // Functions to print info & bestmove with uci.
         using SearchInfoCallback = std::function<void(const search::SearchInfo&)>;
         using BestMoveCallback = std::function<void(Move)>;
-
+        using InfoStringCallback = std::function<void(const std::string&)>;
+        
         // Constructor destructor.
         explicit Engine();
         ~Engine();
@@ -49,19 +72,28 @@ namespace lightknight {
         void StartSearch(const SearchLimits& limits, SearchInfoCallback PrintSearchInfo, BestMoveCallback PrintBestMove);
         void StopSearch();
 
+        const std::vector<Option>& GetOptions() const;
+        void SetOption(const std::string& name, const std::string& value, InfoStringCallback print_info_fn);
         void SaveParameters(const std::string& path);
         void LoadParameters(const std::string& path);
-        
+
     private:
+        // Engine parameters
+        parameters::EngineParameters params;
+
         // Everything making up the search algorithm.
         search::TranspositionTable tt;
         search::TimeControlStruct time_control_struct;
 
-        // Engine options
-        parameters::EngineParameters params;
+        // Engine options, to be set using UCI
+        std::vector<Option> _options;
+
+        std::string params_file_path = kDefaultParamFilePath;
 
         // Separate search thread from the UCI handling thread.
-        std::thread _search_thread;  
+        std::thread _search_thread;
+        
+        bool IsOptionValueValid(const Option& option, const std::string& value);
     };
 } // namespace lightknight
 
