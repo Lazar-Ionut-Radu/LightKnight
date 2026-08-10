@@ -311,7 +311,10 @@ namespace lightknight::parameters {
             for (int piece = 0; piece < 5; ++piece) {
                 parameters.push_back({
                     "eval_piece_values_" + std::to_string(game_phase) + "_" + std::to_string(piece),
-                    const_cast<int*>(&params.eval.piece_values[game_phase][piece])
+                    const_cast<int*>(&params.eval.piece_values[game_phase][piece]),
+                    false,
+                    0,
+                    1500
                 });
             }
         }
@@ -322,7 +325,10 @@ namespace lightknight::parameters {
                 for (int square = 0; square < 64; ++square) {
                     parameters.push_back({
                         "eval_psqt_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(square),
-                        const_cast<int*>(&params.eval.psqt[game_phase][piece][square])
+                        const_cast<int*>(&params.eval.psqt[game_phase][piece][square]),
+                        true,
+                        -100,
+                        100
                     });
                 }
             }
@@ -354,7 +360,10 @@ namespace lightknight::parameters {
 
                     parameters.push_back({
                         "eval_mobility_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(mobility),
-                        const_cast<int*>(&params.eval.mobility[game_phase][piece][mobility])
+                        const_cast<int*>(&params.eval.mobility[game_phase][piece][mobility]),
+                        true,
+                        -50,
+                        50
                     });
                 }
             }
@@ -365,7 +374,10 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_passed_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval.passed_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.passed_pawns[game_phase][square]),
+                    true,
+                    -50,
+                    200
                 });
             }
         }
@@ -375,7 +387,10 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_isolated_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval.isolated_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.isolated_pawns[game_phase][square]),
+                    true,
+                    -100,
+                    100
                 });
             }
         }
@@ -385,7 +400,10 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_protected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval.protected_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.protected_pawns[game_phase][square]),
+                    true,
+                    -50,
+                    50
                 });
             }
         }
@@ -395,7 +413,10 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_connected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval.connected_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.connected_pawns[game_phase][square]),
+                    true,
+                    -50,
+                    50
                 });
             }
         }
@@ -403,16 +424,22 @@ namespace lightknight::parameters {
         // Eval doubled pawns
         for (int game_phase : {0, 1}) {
             parameters.push_back({
-                "eval_doubled_pawn_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval.doubled_pawns[game_phase])
+                "eval_doubled_pawns_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval.doubled_pawns[game_phase]),
+                true,
+                -100,
+                100
             });
         }
 
         // Eval tripled pawns
         for (int game_phase : {0, 1}) {
             parameters.push_back({
-                "eval_tripled_pawn_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval.tripled_pawns[game_phase])
+                "eval_tripled_pawns_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval.tripled_pawns[game_phase]),
+                true,
+                -150,
+                150
             });
         }
 
@@ -421,7 +448,10 @@ namespace lightknight::parameters {
             for (int dist : {0, 1}) {
                 parameters.push_back({
                     "eval_king_pawn_shield_" + std::to_string(game_phase) + "_" + std::to_string(dist),
-                    const_cast<int*>(&params.eval.king_pawn_shield[game_phase][dist])
+                    const_cast<int*>(&params.eval.king_pawn_shield[game_phase][dist]),
+                    true,
+                    -50,
+                    50
                 });
             }
         }
@@ -430,7 +460,10 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_tempo_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval.tempo[game_phase])
+                const_cast<int*>(&params.eval.tempo[game_phase]),
+                true,
+                -100,
+                100
             });
         }
 
@@ -438,7 +471,10 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_bishop_pair_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval.bishop_pair[game_phase])
+                const_cast<int*>(&params.eval.bishop_pair[game_phase]),
+                true,
+                -100,
+                100
             });
         }
 
@@ -453,7 +489,10 @@ namespace lightknight::parameters {
         // Transposition table size.
         parameters.push_back({
             "tt_size_mb",
-            const_cast<int*>(&params.tt_size_mb)
+            const_cast<int*>(&params.tt_size_mb),
+            false,
+            1,
+            1024
         });
 
         return parameters;
@@ -466,10 +505,14 @@ namespace lightknight::parameters {
             throw std::runtime_error("Could not open parameter file: " + path);
         }
 
-        file << "name,value\n";
+        file << "name,value,tunable,min,max\n";
 
         for (const auto& parameter : GetParameterInfoList(params)) {
-            file << parameter.name << ',' << *parameter.value << '\n';
+            file << parameter.name << ',' 
+                 << *parameter.value << ','
+                 << (parameter.tunable ? "true" : "false") << ',' 
+                 << (parameter.tunable ? std::to_string(parameter.min) : "") << ',' 
+                 << (parameter.tunable ? std::to_string(parameter.max) : "") << '\n';
         }
     }
 

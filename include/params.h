@@ -37,6 +37,9 @@ namespace lightknight::parameters {
     struct ParameterInfo {
         std::string name;
         int* value;
+        bool tunable;
+        int min;
+        int max;
     };
 
     struct ParsedParameterName {

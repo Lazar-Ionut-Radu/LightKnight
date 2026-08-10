@@ -29,6 +29,7 @@ LightKnight currently supports the following UCI commands:
 
 * `uci`: identifies the engine
 * `isready`: responds with `readyok`
+* `setoption name <name> value <value>`: changes internal parameters of the engine
 * `ucinewgame`: resets the engine state for a new game
 * `position startpos [moves <move1> <move2> ...]`: loads the starting position and optionally applies a sequence of moves
 * `position fen <fen> [moves <move1> <move2> ...]`: loads a position from FEN and optionally applies a sequence of moves
@@ -40,7 +41,7 @@ LightKnight currently supports the following UCI commands:
 
 ## Known Issues
 
-- <b><span style="color:green">[Solved in v0.3.3]</span></b> Zobrist Hashing and En Passant: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
+* <b><span style="color:green">[Solved in v0.3.3]</span></b> Zobrist Hashing and En Passant: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
 
 ## Compilation
 Building mode is controlled by the ```MODE``` varible, which can be either ```debug``` or ```release```. Debug build retain assertions and debugging information, while release build include optimisation flags. Keep in mind that compiling the engine might take longer than expected because move generation for sliding pieces is precomputed, at compile time.
@@ -101,6 +102,15 @@ Move:         e3a3
 LightKnight:  <missing>
 Stockfish:    881
 ```
+### Magics Generator
+
+Small file that generates constants for the magic bitboards used in move generation. I was not bothered giving this one command line parameters as it is only used once, everything hardcoded in main. 
+
+Nevertheless, it may be run using
+```
+make magics-gen
+```
 
 ## Acknowledgements
 I made use of the [ChessProgramming Wiki](https://www.chessprogramming.org/) as well as the [TalkChess Forum](https://talkchess.com/) extensively for researching aspects of chess engine development. You can find everything you need there. Also, [Sebastian Lague](https://www.youtube.com/c/SebastianLague) has a nice 2-part series on the subject which sparked my interest and is a great starting point.
+
