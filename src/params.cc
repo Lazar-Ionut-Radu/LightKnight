@@ -1,7 +1,11 @@
 // params.c
+#include <string>
+#include <fstream>
+#include <vector>
+
 #include "params.h"
 
-namespace lightknight::params {
+namespace lightknight::parameters {
     // TODO: write a tuner so I can find values of my own / not guessed probably totally wrong.
 
     EngineParameters::EngineParameters() :
@@ -12,16 +16,10 @@ namespace lightknight::params {
         // Piece values.
         // Credits: https://www.chessprogramming.org/Simplified_Evaluation_Function
         eval_piece_values{ 
-            { // Midgame
-                100,  320,  330,  500,  900, 0,
-                -100, -320, -330, -500, -900, 0,
-                0
-            },
-            { // Endgame
-                100,  320,  330,  500,  900, 0,
-                -100, -320, -330, -500, -900, 0,
-                0
-            }
+            // Midgame
+            {100,  320,  330,  500,  900},
+            // Endgame
+            {100,  320,  330,  500,  900}
         },
 
         // Piece-Square tables. Bonuses / Penalties for pieces on a particular square.
@@ -229,28 +227,64 @@ namespace lightknight::params {
             }
         },
 
+        // Bonuses for protected pawns on a particular rank.
+        eval_protected_pawns {
+             // Midgame
+            {
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                3,  3,  3,  3,  3,  3,  3,  3,
+                5,  5,  5,  5,  5,  5,  5,  5,
+                5,  5,  5,  5,  5,  5,  5,  5, 
+                8,  8,  8,  8,  8,  8,  8,  8,
+                10, 10, 10, 10, 10, 10, 10, 10,
+                0,  0,  0,  0,  0,  0,  0,  0
+            },
+            // Endgame
+            {
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                2,  2,  2,  2,  2,  2,  2,  2,
+                4,  4,  4,  4,  4,  4,  4,  4,
+                6,  6,  6,  6,  6,  6,  6,  6,
+                10, 10, 10, 10, 10, 10, 10, 10,
+                12, 12, 12, 12, 12, 12, 12, 12,
+                0,  0,  0,  0,  0,  0,  0,  0
+            }
+        },
+        
+        // Bonuses for connected pawns on a particular rank.
+        eval_connected_pawns {
+            // Midgame
+            {
+                0,  0,  0,  0,  0,  0,  0,  0,
+                1,  1,  1,  1,  1,  1,  1,  1,
+                2,  2,  2,  2,  2,  2,  2,  2,
+                2,  2,  2,  2,  2,  2,  2,  2,
+                3,  3,  3,  3,  3,  3,  3,  3,
+                5,  5,  5,  5,  5,  5,  5,  5, 
+                7,  7,  7,  7,  7,  7,  7,  7,
+                0,  0,  0,  0,  0,  0,  0,  0
+            },
+            // Endgame
+            {
+                0,  0,  0,  0,  0,  0,  0,  0,
+                1,  1,  1,  1,  1,  1,  1,  1,
+                2,  2,  2,  2,  2,  2,  2,  2,
+                2,  2,  2,  2,  2,  2,  2,  2,
+                4,  4,  4,  4,  4,  4,  4,  4,
+                7,  7,  7,  7,  7,  7,  7,  7,
+                9,  9,  9,  9,  9,  9,  9,  9,
+                0,  0,  0,  0,  0,  0,  0,  0
+            },
+        },
+
         // Penalty for doubled pawns.
         eval_doubled_pawns {-20, -30},
         
         // Penalty for tripled pawns.
         eval_tripled_pawns {-50, -70},
         
-        // Bonuses for protected pawns on a particular rank.
-        eval_protected_pawn {
-             // Midgame
-            {0, 0, 3, 5, 5, 8, 10, 0},
-            // Endgame
-            {0, 0, 2, 4, 6, 10, 12, 0}
-        },
-        
-        // Bonuses for connected pawns on a particular rank.
-        eval_connected_pawn {
-            // Midgame
-            {0, 1, 2, 2, 3, 5, 7, 0},
-            // Endgame
-            {0, 1, 2, 2, 4, 7, 9, 0}
-        },
-
         // Bonuses for pawns in front of the king, 1 or 2 ranks forwards.
         eval_king_pawn_shield {
             // Midgame
@@ -269,4 +303,176 @@ namespace lightknight::params {
         // ----------- Transposition Table --------------
         // ----------------------------------------------
         tt_size_mb {256} {};
-} // namespace params
+
+    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params) {
+        std::vector<ParameterInfo> parameters;
+
+        // ------------ Evaluation ------------
+
+        // Eval piece values
+        for (int game_phase : {0, 1}) {
+            for (int piece = 0; piece < 5; ++piece) {
+                parameters.push_back({
+                    "eval_piece_values_" + std::to_string(game_phase) + "_" + std::to_string(piece),
+                    const_cast<int*>(&params.eval_piece_values[game_phase][piece])
+                });
+            }
+        }
+
+        // Eval psqt
+        for (int game_phase : {0, 1}) {
+            for (int piece = 0; piece < 6; ++piece) {
+                for (int square = 0; square < 64; ++square) {
+                    parameters.push_back({
+                        "eval_psqt_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(square),
+                        const_cast<int*>(&params.eval_psqt[game_phase][piece][square])
+                    });
+                }
+            }
+        }
+
+        // Eval mobility
+        for (int game_phase : {0, 1}) {
+            for (int piece = 0; piece < 5; ++piece) {
+                for (int mobility = 0; mobility < 28; ++mobility) {
+                    // Don't care about pawns
+                    if (piece == 0)
+                        break;
+
+                    // Knight max mobility = 8
+                    if (piece == 1 && mobility > 8)
+                        break;
+
+                    // Bishop max mobility = 13
+                    if (piece == 2 && mobility > 13)
+                        break;
+
+                    // Rook max mobility = 15
+                    if (piece == 3 && mobility > 15)
+                        break;
+
+                    // Queen max mobility = 27
+                    if (piece == 4 && mobility > 27)
+                        break;
+
+                    parameters.push_back({
+                        "eval_mobility_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(mobility),
+                        const_cast<int*>(&params.eval_mobility[game_phase][piece][mobility])
+                    });
+                }
+            }
+        }
+
+        // Eval passed pawns
+        for (int game_phase : {0, 1}) {
+            for (int square = 0; square < 64; ++square) {
+                parameters.push_back({
+                    "eval_passed_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
+                    const_cast<int*>(&params.eval_passed_pawns[game_phase][square])
+                });
+            }
+        }
+
+        // Eval isolated pawns
+        for (int game_phase : {0, 1}) {
+            for (int square = 0; square < 64; ++square) {
+                parameters.push_back({
+                    "eval_isolated_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
+                    const_cast<int*>(&params.eval_isolated_pawns[game_phase][square])
+                });
+            }
+        }
+
+        // Eval protected pawns
+        for (int game_phase : {0, 1}) {
+            for (int square = 0; square < 64; ++square) {
+                parameters.push_back({
+                    "eval_protected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
+                    const_cast<int*>(&params.eval_protected_pawns[game_phase][square])
+                });
+            }
+        }
+
+        // Eval connected pawns
+        for (int game_phase : {0, 1}) {
+            for (int square = 0; square < 64; ++square) {
+                parameters.push_back({
+                    "eval_connected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
+                    const_cast<int*>(&params.eval_connected_pawns[game_phase][square])
+                });
+            }
+        }
+
+        // Eval doubled pawns
+        for (int game_phase : {0, 1}) {
+            parameters.push_back({
+                "eval_doubled_pawn_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval_doubled_pawns[game_phase])
+            });
+        }
+
+        // Eval tripled pawns
+        for (int game_phase : {0, 1}) {
+            parameters.push_back({
+                "eval_tripled_pawn_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval_tripled_pawns[game_phase])
+            });
+        }
+
+        // Eval king pawn shield
+        for (int game_phase : {0, 1}) {
+            for (int dist : {0, 1}) {
+                parameters.push_back({
+                    "eval_king_pawn_shield_" + std::to_string(game_phase) + "_" + std::to_string(dist),
+                    const_cast<int*>(&params.eval_king_pawn_shield[game_phase][dist])
+                });
+            }
+        }
+
+        // Eval tempo
+        for (int game_phase : {0, 1}) {
+            parameters.push_back({
+                "eval_tempo_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval_tempo[game_phase])
+            });
+        }
+
+        // Eval bishop pair
+        for (int game_phase : {0, 1}) {
+            parameters.push_back({
+                "eval_bishop_pair_" + std::to_string(game_phase),
+                const_cast<int*>(&params.eval_bishop_pair[game_phase])
+            });
+        }
+
+        // ---------------- Transposition Table ----------------
+        
+        // Transposition table size.
+        parameters.push_back({
+            "tt_size_mb",
+            const_cast<int*>(&params.tt_size_mb)
+        });
+
+        return parameters;
+    }
+
+    void SaveParameters(const EngineParameters& params, const std::string& path) {
+        std::ofstream file(path);
+
+        if (!file) {
+            throw std::runtime_error("Could not open parameter file: " + path);
+        }
+
+        file << "name,value\n";
+
+        for (const auto& parameter : GetParameterInfoList(params)) {
+            file << parameter.name << ',' << *parameter.value << '\n';
+        }
+    }
+
+    // TODO.
+    void LoadParameters(EngineParameters& params, const std::string& path) {
+
+    }
+        
+} // namespace parameters

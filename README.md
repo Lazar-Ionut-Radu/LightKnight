@@ -103,6 +103,4 @@ Stockfish:    881
 ```
 
 ## Acknowledgements
-I made use of the [ChessProgramming Wiki](https://www.chessprogramming.org/) as well as the [TalkChess Forum](https://talkchess.com/) extensively for researching aspects of chess engine development. You can find everything you need there.
-
-Also, [Sebastian Lague](https://www.youtube.com/c/SebastianLague) has a nice 2-part series on the subject which sparked my interest and is a great starting point.
+I made use of the [ChessProgramming Wiki](https://www.chessprogramming.org/) as well as the [TalkChess Forum](https://talkchess.com/) extensively for researching aspects of chess engine development. You can find everything you need there. Also, [Sebastian Lague](https://www.youtube.com/c/SebastianLague) has a nice 2-part series on the subject which sparked my interest and is a great starting point.

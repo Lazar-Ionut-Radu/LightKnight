@@ -35,20 +35,20 @@ namespace lightknight::eval {
     uint64_t ConnectedPawnsBB(const Board& board, Color color);
 
     // From white's perspective.
-    int EvaluateMaterial_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int EvaluateMaterial(const Board& board, int phase_weight, const params::EngineParameters& params);
-    int EvaluatePieceSquare_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int EvaluatePieceSquare(const Board& board, int phase_weight, const params::EngineParameters& params);
-    int EvaluateMobility_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int EvaluateMobility(const Board& board, int phase_weight, const params::EngineParameters& params);
-    int EvaluatePawns_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int EvaluatePawns(const Board& board, int phase_weight, const params::EngineParameters& params);
-    int EvaluateKings_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int EvaluateKings(const Board& board, int phase_weight, const params::EngineParameters& params);
+    int EvaluateMaterial_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int EvaluateMaterial(const Board& board, int phase_weight, const parameters::EngineParameters& params);
+    int EvaluatePieceSquare_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int EvaluatePieceSquare(const Board& board, int phase_weight, const parameters::EngineParameters& params);
+    int EvaluateMobility_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int EvaluateMobility(const Board& board, int phase_weight, const parameters::EngineParameters& params);
+    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params);
+    int EvaluateKings_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int EvaluateKings(const Board& board, int phase_weight, const parameters::EngineParameters& params);
 
     // From the perspective of the player whose turn it is.
-    int Evaluate_(const Board& board, GamePhase game_phase, const params::EngineParameters& params);
-    int Evaluate(const Board& board, const params::EngineParameters& params);
+    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
+    int Evaluate(const Board& board, const parameters::EngineParameters& params);
 } // namespace lightknight::eval
 
 #endif // LIGHTKNIGHT_EVAL_H

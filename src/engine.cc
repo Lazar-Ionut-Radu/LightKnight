@@ -96,4 +96,13 @@ namespace lightknight {
         if (_search_thread.joinable())
             _search_thread.join();
     }
+
+    void Engine::SaveParameters(const std::string& path) {
+        parameters::SaveParameters(params, path);
+    }
+
+    void Engine::LoadParameters(const std::string& path) {
+        parameters::LoadParameters(params, path);
+    }
+
 } // namespace lightknight

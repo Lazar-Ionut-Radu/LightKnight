@@ -70,7 +70,7 @@ namespace lightknight::search {
     int IterativeDeepening(
         Board& board,
         int max_depth,
-        const params::EngineParameters& params,
+        const parameters::EngineParameters& params,
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& search_stats,
@@ -86,7 +86,7 @@ namespace lightknight::search {
         int depth, // Current depth.
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
-        const params::EngineParameters& params,
+        const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
         TimeControlStruct& time_control,
         SearchStats& stats
@@ -100,7 +100,7 @@ namespace lightknight::search {
         int depth,
         std::vector<std::vector<Move>>& move_lists, // Preallocated vectors.
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
-        const params::EngineParameters& params,
+        const parameters::EngineParameters& params,
         TranspositionTable& tt,
         TimeControlStruct& time_control,
         SearchStats& stats

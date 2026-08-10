@@ -123,18 +123,22 @@ namespace lightknight::eval {
     }
 
 
-    int EvaluateMaterial_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int EvaluateMaterial_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int eval = 0;
 
-        for (size_t piece = 0; piece < lightknight::kNumPieces - 1; ++piece) {
+        for (size_t piece = Piece::kWhitePawn; piece < Piece::kWhiteKing; ++piece) {
             eval += params.eval_piece_values[game_phase][piece] * SetBitsCount(board.piece_bitboards[piece]);
+        }
+
+        for (size_t piece = Piece::kBlackPawn; piece < Piece::kBlackKing; ++piece) {
+            eval -= params.eval_piece_values[game_phase][piece % 6] * SetBitsCount(board.piece_bitboards[piece]);
         }
 
         return eval;
     }
 
-    int EvaluatePieceSquare_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
-        int evaluation = 0;
+    int EvaluatePieceSquare_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
+        int eval = 0;
 
         for (size_t piece = 0; piece < lightknight::kNumPieces - 1; ++piece) {
             const lightknight::Color color = (piece < 6) ? lightknight::Color::kWhite : lightknight::Color::kBlack;
@@ -149,15 +153,15 @@ namespace lightknight::eval {
 
                 const int square_value = params.eval_psqt[game_phase][piece_idx][table_square];
 
-                evaluation += color == lightknight::Color::kWhite ? square_value : -square_value;
+                eval += color == lightknight::Color::kWhite ? square_value : -square_value;
                 piece_bb &= ~square_bb;
             }
         }
 
-        return evaluation;
+        return eval;
     }
 
-    int EvaluateMobility_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int EvaluateMobility_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int evaluation = 0;
         
         // Knights
@@ -187,7 +191,7 @@ namespace lightknight::eval {
         return evaluation;
     }
 
-    int EvaluateSmallBonuses_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int EvaluateSmallBonuses_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int evaluation = 0;
         
         // Tempo.
@@ -204,7 +208,7 @@ namespace lightknight::eval {
         return evaluation; 
     }
 
-    int EvaluatePawns_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int evaluation = 0;
 
         // Passed pawn bonus        
@@ -256,11 +260,11 @@ namespace lightknight::eval {
 
         for (uint64_t bb = white_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
-            evaluation += params.eval_connected_pawn[game_phase][pawn_rank];
+            evaluation += params.eval_connected_pawns[game_phase][pawn_rank];
         }
         for (uint64_t bb = black_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
-            evaluation -= params.eval_connected_pawn[game_phase][pawn_rank];
+            evaluation -= params.eval_connected_pawns[game_phase][pawn_rank];
         }
 
         // Protected pawns bonus.
@@ -269,17 +273,17 @@ namespace lightknight::eval {
 
         for (uint64_t bb = white_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
-            evaluation += params.eval_protected_pawn[game_phase][pawn_rank];
+            evaluation += params.eval_protected_pawns[game_phase][pawn_rank];
         }
         for (uint64_t bb = black_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
-            evaluation -= params.eval_protected_pawn[game_phase][pawn_rank];
+            evaluation -= params.eval_protected_pawns[game_phase][pawn_rank];
         }
 
         return evaluation;
     }
 
-    int EvaluateKings_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int EvaluateKings_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int evaluation = 0;
 
         // King pawn shield
@@ -313,7 +317,7 @@ namespace lightknight::eval {
     }
 
 
-    int EvaluateMaterial(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluateMaterial(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluateMaterial_(board, GamePhase::kMG, params),
@@ -321,7 +325,7 @@ namespace lightknight::eval {
         );
     }
 
-    int EvaluatePieceSquare(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluatePieceSquare(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluatePieceSquare_(board, GamePhase::kMG, params),
@@ -329,7 +333,7 @@ namespace lightknight::eval {
         );
     }
 
-    int EvaluateMobility(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluateMobility(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluateMobility_(board, GamePhase::kMG, params),
@@ -337,7 +341,7 @@ namespace lightknight::eval {
         );
     }
 
-    int EvaluateSmallBonuses(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluateSmallBonuses(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluateSmallBonuses_(board, GamePhase::kMG, params),
@@ -345,7 +349,7 @@ namespace lightknight::eval {
         );
     };
 
-    int EvaluatePawns(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluatePawns_(board, GamePhase::kMG, params),
@@ -353,7 +357,7 @@ namespace lightknight::eval {
         );
     }
 
-    int EvaluateKings(const Board& board, int phase_weight, const params::EngineParameters& params) {
+    int EvaluateKings(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
         return ComputeWeightedEval(
             phase_weight,
             EvaluateKings_(board, GamePhase::kMG, params),
@@ -362,7 +366,7 @@ namespace lightknight::eval {
     }
 
 
-    int Evaluate_(const Board& board, GamePhase game_phase, const params::EngineParameters& params) {
+    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         const int white_relative_score = 
             EvaluateMaterial_(board, game_phase, params) + 
             EvaluatePieceSquare_(board, game_phase, params) +
@@ -376,7 +380,7 @@ namespace lightknight::eval {
             : -white_relative_score;
     }
 
-    int Evaluate(const Board& board, const params::EngineParameters& params) {
+    int Evaluate(const Board& board, const parameters::EngineParameters& params) {
         const int phase_weight = ComputeGamePhase(board);
         const int white_relative_score = 
             EvaluateMaterial(board, phase_weight, params) + 

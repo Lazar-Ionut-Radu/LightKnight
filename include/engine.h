@@ -48,6 +48,9 @@ namespace lightknight {
         void SetPosition(const std::string& fen);
         void StartSearch(const SearchLimits& limits, SearchInfoCallback PrintSearchInfo, BestMoveCallback PrintBestMove);
         void StopSearch();
+
+        void SaveParameters(const std::string& path);
+        void LoadParameters(const std::string& path);
         
     private:
         // Everything making up the search algorithm.
@@ -55,7 +58,7 @@ namespace lightknight {
         search::TimeControlStruct time_control_struct;
 
         // Engine options
-        params::EngineParameters params;
+        parameters::EngineParameters params;
 
         // Separate search thread from the UCI handling thread.
         std::thread _search_thread;  
