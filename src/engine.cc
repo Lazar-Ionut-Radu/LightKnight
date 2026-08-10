@@ -104,5 +104,4 @@ namespace lightknight {
     void Engine::LoadParameters(const std::string& path) {
         parameters::LoadParameters(params, path);
     }
-
 } // namespace lightknight

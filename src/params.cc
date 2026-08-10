@@ -1,6 +1,7 @@
 // params.c
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <vector>
 
 #include "params.h"
@@ -8,14 +9,14 @@
 namespace lightknight::parameters {
     // TODO: write a tuner so I can find values of my own / not guessed probably totally wrong.
 
-    EngineParameters::EngineParameters() :
+    EvalParameters::EvalParameters() :
         // ---------------------------------------------
         // ----------- Evaluation Parameters -----------
         // ---------------------------------------------
 
         // Piece values.
         // Credits: https://www.chessprogramming.org/Simplified_Evaluation_Function
-        eval_piece_values{ 
+        piece_values{ 
             // Midgame
             {100,  320,  330,  500,  900},
             // Endgame
@@ -24,7 +25,7 @@ namespace lightknight::parameters {
 
         // Piece-Square tables. Bonuses / Penalties for pieces on a particular square.
         // Credits: http://www.talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=19
-        eval_psqt {
+        psqt {
             { // Midgame
                 { // Pawn
                     0,   0,   0,   0,   0,   0,  0,   0,
@@ -139,7 +140,7 @@ namespace lightknight::parameters {
                     -9,  22,  22,  27,  27,  19,  10,  20,
                 },
                 { // King
-                    -53, -34, -21, -11, -28, -14, -24, -43
+                    -53, -34, -21, -11, -28, -14, -24, -43,
                     -27, -11,   4,  13,  14,   4,  -5, -17,
                     -19,  -3,  11,  21,  23,  16,   7,  -9,
                     -18,  -4,  21,  24,  27,  23,   9, -11,
@@ -152,7 +153,7 @@ namespace lightknight::parameters {
         },
 
         // Bonuses / Penalties for pieces based on number of legal moves.
-        eval_mobility {
+        mobility {
             { // Midgame
                 // Pawn
                 {0},
@@ -180,7 +181,7 @@ namespace lightknight::parameters {
         },
 
         // Tables for bonuses for passed pawns on a particular square.
-        eval_passed_pawns {
+        passed_pawns {
             { // Midgame
                 0,   0,   0,   0,   0,   0,   0,   0,
                 20,  20,  20,  20,  20,  20,  20,  20,
@@ -204,7 +205,7 @@ namespace lightknight::parameters {
         },
 
         // Tables for penalties for isolated pawns on a particular square.
-        eval_isolated_pawns {
+        isolated_pawns {
             { // Midgame
                 0,   0,   0,   0,   0,   0,   0,   0,
                 -8, -12, -14, -16, -16, -14, -12, -10,
@@ -228,7 +229,7 @@ namespace lightknight::parameters {
         },
 
         // Bonuses for protected pawns on a particular rank.
-        eval_protected_pawns {
+        protected_pawns {
              // Midgame
             {
                 0,  0,  0,  0,  0,  0,  0,  0,
@@ -254,7 +255,7 @@ namespace lightknight::parameters {
         },
         
         // Bonuses for connected pawns on a particular rank.
-        eval_connected_pawns {
+        connected_pawns {
             // Midgame
             {
                 0,  0,  0,  0,  0,  0,  0,  0,
@@ -280,13 +281,13 @@ namespace lightknight::parameters {
         },
 
         // Penalty for doubled pawns.
-        eval_doubled_pawns {-20, -30},
+        doubled_pawns {-20, -30},
         
         // Penalty for tripled pawns.
-        eval_tripled_pawns {-50, -70},
+        tripled_pawns {-50, -70},
         
         // Bonuses for pawns in front of the king, 1 or 2 ranks forwards.
-        eval_king_pawn_shield {
+        king_pawn_shield {
             // Midgame
             {8, 4},
             // Endgame
@@ -294,27 +295,23 @@ namespace lightknight::parameters {
         },
 
         // Bonus for the side to move.
-        eval_tempo {10, 10},
+        tempo {10, 10},
 
         // Bonus for having a bishop pair.
-        eval_bishop_pair {23, 33},
+        bishop_pair {23, 33} {};
 
-        // ----------------------------------------------
-        // ----------- Transposition Table --------------
-        // ----------------------------------------------
+    EngineParameters::EngineParameters() :
         tt_size_mb {256} {};
-
-    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params) {
+    
+    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params) {
         std::vector<ParameterInfo> parameters;
-
-        // ------------ Evaluation ------------
 
         // Eval piece values
         for (int game_phase : {0, 1}) {
             for (int piece = 0; piece < 5; ++piece) {
                 parameters.push_back({
                     "eval_piece_values_" + std::to_string(game_phase) + "_" + std::to_string(piece),
-                    const_cast<int*>(&params.eval_piece_values[game_phase][piece])
+                    const_cast<int*>(&params.eval.piece_values[game_phase][piece])
                 });
             }
         }
@@ -325,7 +322,7 @@ namespace lightknight::parameters {
                 for (int square = 0; square < 64; ++square) {
                     parameters.push_back({
                         "eval_psqt_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(square),
-                        const_cast<int*>(&params.eval_psqt[game_phase][piece][square])
+                        const_cast<int*>(&params.eval.psqt[game_phase][piece][square])
                     });
                 }
             }
@@ -357,7 +354,7 @@ namespace lightknight::parameters {
 
                     parameters.push_back({
                         "eval_mobility_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(mobility),
-                        const_cast<int*>(&params.eval_mobility[game_phase][piece][mobility])
+                        const_cast<int*>(&params.eval.mobility[game_phase][piece][mobility])
                     });
                 }
             }
@@ -368,7 +365,7 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_passed_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval_passed_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.passed_pawns[game_phase][square])
                 });
             }
         }
@@ -378,7 +375,7 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_isolated_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval_isolated_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.isolated_pawns[game_phase][square])
                 });
             }
         }
@@ -388,7 +385,7 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_protected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval_protected_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.protected_pawns[game_phase][square])
                 });
             }
         }
@@ -398,7 +395,7 @@ namespace lightknight::parameters {
             for (int square = 0; square < 64; ++square) {
                 parameters.push_back({
                     "eval_connected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
-                    const_cast<int*>(&params.eval_connected_pawns[game_phase][square])
+                    const_cast<int*>(&params.eval.connected_pawns[game_phase][square])
                 });
             }
         }
@@ -407,7 +404,7 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_doubled_pawn_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval_doubled_pawns[game_phase])
+                const_cast<int*>(&params.eval.doubled_pawns[game_phase])
             });
         }
 
@@ -415,7 +412,7 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_tripled_pawn_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval_tripled_pawns[game_phase])
+                const_cast<int*>(&params.eval.tripled_pawns[game_phase])
             });
         }
 
@@ -424,7 +421,7 @@ namespace lightknight::parameters {
             for (int dist : {0, 1}) {
                 parameters.push_back({
                     "eval_king_pawn_shield_" + std::to_string(game_phase) + "_" + std::to_string(dist),
-                    const_cast<int*>(&params.eval_king_pawn_shield[game_phase][dist])
+                    const_cast<int*>(&params.eval.king_pawn_shield[game_phase][dist])
                 });
             }
         }
@@ -433,7 +430,7 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_tempo_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval_tempo[game_phase])
+                const_cast<int*>(&params.eval.tempo[game_phase])
             });
         }
 
@@ -441,12 +438,18 @@ namespace lightknight::parameters {
         for (int game_phase : {0, 1}) {
             parameters.push_back({
                 "eval_bishop_pair_" + std::to_string(game_phase),
-                const_cast<int*>(&params.eval_bishop_pair[game_phase])
+                const_cast<int*>(&params.eval.bishop_pair[game_phase])
             });
         }
 
+        return parameters;
+    }
+
+    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params) {
+        // -------------------- Evaluation ---------------------
+        std::vector<ParameterInfo> parameters = GetEvalParameterInfoList(params);
+
         // ---------------- Transposition Table ----------------
-        
         // Transposition table size.
         parameters.push_back({
             "tt_size_mb",
@@ -470,9 +473,51 @@ namespace lightknight::parameters {
         }
     }
 
-    // TODO.
+    // TODO: Make it nicer, so that it looks at the CSV header.
     void LoadParameters(EngineParameters& params, const std::string& path) {
+        std::ifstream file(path);
+        if (!file) {
+            throw std::runtime_error("Could not open parameter file; " + path);
+        }
 
+        auto parameters = GetParameterInfoList(params);
+        std::string line;
+
+        // Skip CSV header.
+        std::getline(file, line);
+
+        while (std::getline(file, line)) {
+            if (line.empty())
+                continue;
+
+            std::stringstream ss(line);
+            std::string name;
+            std::string value_string;
+
+            if (!std::getline(ss, name, ',') || !std::getline(ss, value_string)) {
+                throw std::runtime_error("Invalid parameter line: " + line);
+            }
+
+            int value;
+            try {
+                value = std::stoi(value_string);
+            } catch(const std::exception&) {
+                throw std::runtime_error("Invalid parameter value for '" + name + "': " + value_string);
+            }
+
+            bool found = false;
+
+            for (const auto& parameter : parameters) {
+                if (parameter.name == name) {
+                    *parameter.value = value;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                throw std::runtime_error("Unknown parameter: " + name);
+            }
+        }
     }
-        
 } // namespace parameters

@@ -6,30 +6,32 @@
 #include <types.h>
 
 namespace lightknight::parameters {
-    struct EngineParameters {
-        // Evaluation parameters
-        int eval_piece_values[2][5];
-        int eval_psqt[2][6][64];
-        int eval_mobility[2][5][28];
-        int eval_passed_pawns[2][64];
-        int eval_isolated_pawns[2][64];
-        int eval_protected_pawns[2][64];
-        int eval_connected_pawns[2][64];
-        int eval_doubled_pawns[2];
-        int eval_tripled_pawns[2];
-        int eval_king_pawn_shield[2][2];
-        int eval_tempo[2];
-        int eval_bishop_pair[2];
+    
+    struct EvalParameters {
+        int piece_values[2][5];
+        int psqt[2][6][64];
+        int mobility[2][5][28];
+        int passed_pawns[2][64];
+        int isolated_pawns[2][64];
+        int protected_pawns[2][64];
+        int connected_pawns[2][64];
+        int doubled_pawns[2];
+        int tripled_pawns[2];
+        int king_pawn_shield[2][2];
+        int tempo[2];
+        int bishop_pair[2];
 
-        // Transposition table
+        // Constructor with default values.
+        EvalParameters();
+    };
+
+    struct EngineParameters {
+        EvalParameters eval = EvalParameters();
+
         int tt_size_mb;
         
         // Constructor with default values.
         EngineParameters();
-
-        // Save parameters to a file
-        void Save();
-        void Load();
     };
 
     struct ParameterInfo {
@@ -37,8 +39,15 @@ namespace lightknight::parameters {
         int* value;
     };
 
-    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params);
+    struct ParsedParameterName {
+        std::string name;
+        std::vector<int> indices;
+    };
 
+    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params);
+    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params);
+    ParsedParameterName ParseParameterName(const std::string& param_name);
+    
     void SaveParameters(const EngineParameters& params, const std::string& path);
     void LoadParameters(EngineParameters& params, const std::string& path);
 } // namespace params
