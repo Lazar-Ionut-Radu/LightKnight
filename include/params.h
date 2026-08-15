@@ -47,8 +47,8 @@ namespace lightknight::parameters {
         std::vector<int> indices;
     };
 
-    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params);
-    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params);
+    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params, bool strip_non_tunable = true);
+    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params, bool strip_non_tunable = true);
     ParsedParameterName ParseParameterName(const std::string& param_name);
     
     void SaveParameters(const EngineParameters& params, const std::string& path);

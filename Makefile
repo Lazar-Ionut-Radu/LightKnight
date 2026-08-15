@@ -6,6 +6,7 @@ COMMON_CXXFLAGS := \
 	-Wall \
 	-Wextra \
 	-Iinclude \
+	-Itools/tuner/include \
 	-MMD \
 	-MP \
 	-fconstexpr-ops-limit=200000000
@@ -63,7 +64,8 @@ TEST_EXE := $(BUILD_DIR)/tests
 	benchmark \
 	clean \
 	magics \
-	perft-debug
+	perft-debug \
+	tuner
 
 all: $(ENGINE_EXE)
 
@@ -84,8 +86,7 @@ $(ENGINE_EXE): $(OBJ_ENGINE)
 
 # Link tests.
 $(TEST_EXE): $(OBJ_TEST)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ \
-		$(LDLIBS) $(TEST_LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) $(TEST_LDLIBS)
 
 # -------------------------------------------------------------------
 # Tests
@@ -134,8 +135,7 @@ PERFT_DEBUG_SRC := tools/perft_debug/perft_debug.cc
 PERFT_DEBUG_OBJ := $(BUILD_DIR)/tools/perft_debug/perft_debug.o
 
 PERFT_DEBUG_ENGINE_SRC := $(ENGINE_LIB_SRC)
-PERFT_DEBUG_ENGINE_OBJ := \
-	$(patsubst %.cc,$(BUILD_DIR)/%.o,$(PERFT_DEBUG_ENGINE_SRC))
+PERFT_DEBUG_ENGINE_OBJ := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(PERFT_DEBUG_ENGINE_SRC))
 
 PERFT_DEBUG_EXE := $(BUILD_DIR)/perft-debug
 
@@ -143,6 +143,20 @@ $(PERFT_DEBUG_EXE): $(PERFT_DEBUG_OBJ) $(PERFT_DEBUG_ENGINE_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 perft-debug: $(PERFT_DEBUG_EXE)
+
+# -------------------------------------------------------------------
+# Tuner executable
+# -------------------------------------------------------------------
+
+TUNER_SRC := $(wildcard tools/tuner/src/*.cc)
+TUNER_OBJ := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(TUNER_SRC))
+TUNER_ENGINE_OBJ := $(patsubst %.cc,$(BUILD_DIR)/%.o,$(ENGINE_LIB_SRC))
+TUNER_EXE := $(BUILD_DIR)/tuner
+
+$(TUNER_EXE): $(TUNER_OBJ) $(TUNER_ENGINE_OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+
+tuner: $(TUNER_EXE)
 
 # -------------------------------------------------------------------
 # Header dependency files
@@ -153,7 +167,9 @@ ALL_OBJ := $(sort \
 	$(OBJ_TEST) \
 	$(MAGICS_OBJ) \
 	$(PERFT_DEBUG_OBJ) \
-	$(PERFT_DEBUG_ENGINE_OBJ))
+	$(PERFT_DEBUG_ENGINE_OBJ)) \
+	$(TUNER_OBJ) \
+	$(TUNER_ENGINE_OBJ))
 
 DEPS := $(ALL_OBJ:.o=.d)
 

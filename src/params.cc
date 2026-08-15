@@ -303,7 +303,7 @@ namespace lightknight::parameters {
     EngineParameters::EngineParameters() :
         tt_size_mb {256} {};
     
-    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params) {
+    std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params, bool strip_non_tunable) {
         std::vector<ParameterInfo> parameters;
 
         // Eval piece values
@@ -327,8 +327,8 @@ namespace lightknight::parameters {
                         "eval_psqt_" + std::to_string(game_phase) + "_" + std::to_string(piece) + "_" + std::to_string(square),
                         const_cast<int*>(&params.eval.psqt[game_phase][piece][square]),
                         true,
-                        -100,
-                        100
+                        -200,
+                        200
                     });
                 }
             }
@@ -376,7 +376,7 @@ namespace lightknight::parameters {
                     "eval_passed_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.passed_pawns[game_phase][square]),
                     true,
-                    -50,
+                    0,
                     200
                 });
             }
@@ -390,7 +390,7 @@ namespace lightknight::parameters {
                     const_cast<int*>(&params.eval.isolated_pawns[game_phase][square]),
                     true,
                     -100,
-                    100
+                    0
                 });
             }
         }
@@ -402,8 +402,8 @@ namespace lightknight::parameters {
                     "eval_protected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.protected_pawns[game_phase][square]),
                     true,
-                    -50,
-                    50
+                    0,
+                    100
                 });
             }
         }
@@ -415,8 +415,8 @@ namespace lightknight::parameters {
                     "eval_connected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.connected_pawns[game_phase][square]),
                     true,
-                    -50,
-                    50
+                    0,
+                    100
                 });
             }
         }
@@ -428,7 +428,7 @@ namespace lightknight::parameters {
                 const_cast<int*>(&params.eval.doubled_pawns[game_phase]),
                 true,
                 -100,
-                100
+                0
             });
         }
 
@@ -438,8 +438,8 @@ namespace lightknight::parameters {
                 "eval_tripled_pawns_" + std::to_string(game_phase),
                 const_cast<int*>(&params.eval.tripled_pawns[game_phase]),
                 true,
-                -150,
-                150
+                -200,
+                0
             });
         }
 
@@ -450,8 +450,8 @@ namespace lightknight::parameters {
                     "eval_king_pawn_shield_" + std::to_string(game_phase) + "_" + std::to_string(dist),
                     const_cast<int*>(&params.eval.king_pawn_shield[game_phase][dist]),
                     true,
-                    -50,
-                    50
+                    0,
+                    100
                 });
             }
         }
@@ -462,7 +462,7 @@ namespace lightknight::parameters {
                 "eval_tempo_" + std::to_string(game_phase),
                 const_cast<int*>(&params.eval.tempo[game_phase]),
                 true,
-                -100,
+                0,
                 100
             });
         }
@@ -473,15 +473,22 @@ namespace lightknight::parameters {
                 "eval_bishop_pair_" + std::to_string(game_phase),
                 const_cast<int*>(&params.eval.bishop_pair[game_phase]),
                 true,
-                -100,
+                0,
                 100
             });
         }
-
+        
+        // Remove non-tunable params if we want that.
+        if (strip_non_tunable) {
+            std::erase_if(parameters, [](const ParameterInfo& parameter) {
+                return !parameter.tunable;
+            });
+        }
+        
         return parameters;
     }
 
-    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params) {
+    std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params, bool strip_non_tunable) {
         // -------------------- Evaluation ---------------------
         std::vector<ParameterInfo> parameters = GetEvalParameterInfoList(params);
 
@@ -495,6 +502,13 @@ namespace lightknight::parameters {
             1024
         });
 
+        // Remove non-tunable params if we want that.
+        if (strip_non_tunable) {
+            std::erase_if(parameters, [](const ParameterInfo& parameter) {
+                return !parameter.tunable;
+            });
+        }
+
         return parameters;
     }
 
@@ -507,7 +521,7 @@ namespace lightknight::parameters {
 
         file << "name,value,tunable,min,max\n";
 
-        for (const auto& parameter : GetParameterInfoList(params)) {
+        for (const auto& parameter : GetParameterInfoList(params, false)) {
             file << parameter.name << ',' 
                  << *parameter.value << ','
                  << (parameter.tunable ? "true" : "false") << ',' 
@@ -523,7 +537,7 @@ namespace lightknight::parameters {
             throw std::runtime_error("Could not open parameter file; " + path);
         }
 
-        auto parameters = GetParameterInfoList(params);
+        auto parameters = GetParameterInfoList(params, false);
         std::string line;
 
         // Skip CSV header.
