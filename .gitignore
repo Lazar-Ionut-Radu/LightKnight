@@ -4,6 +4,7 @@ build/
 # Compiled files
 *.o
 *.d
+
 *.csv
 *.pyc
 *.pgn
