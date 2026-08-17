@@ -2,7 +2,7 @@
 
 LightKnight is a UCI chess engine written in C++. 
 
-I started the development of this engine only because of my interest in the subject, to get acquainted with the the algorithms, micro-optimizations and heuristics involved. It's kind of a rabbit-hole once you get into it.
+I started the development of this engine only because of my interest in the subject, to get acquainted with the the algorithms, micro-optimizations and heuristics involved. This is a learning experience, and it becomes kind of a rabbit-hole once you get into it.
 
 In the beginning my goal was just to make something that can beat me at chess. It turns out that's not a hard task at all, so now I will try to make it as good as I can. We'll see how much I can improve it, however it's just a hobby project, thus the "Light" in its name.
 
@@ -22,6 +22,7 @@ a good summary of which can be found [here](https://gist.github.com/DOBRO/2592c6
 
 * <b>Search:</b>
   * PVS: Principal Variation Search
+  * Iterative Deepening
   * Quiescence Search
   * TT: Transposition Table
     * Aging mechanism
