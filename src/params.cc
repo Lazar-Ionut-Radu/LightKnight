@@ -295,7 +295,7 @@ namespace lightknight::parameters {
         },
 
         // Bonus for the side to move.
-        tempo {78, 32},
+        tempo {20, 20},
 
         // Bonus for having a bishop pair.
         bishop_pair {17, 24} {};

@@ -43,7 +43,10 @@ a good summary of which can be found [here](https://gist.github.com/DOBRO/2592c6
   * Bishop pair bonus
 
 * <b>Move ordering:</b>
-  * MVV-LVA for captures
+  * MVV-LVA (Most Valuable Victim - Least valuable Attacker) for ordering captures
+  * History Heuristic for ordering quiet moves. Not used in Quiescence search:
+    * History bonus: ``depth*depth`` (when a quiet move causes a cutoff)
+    * History penalty: ``-depth*depth / 2`` (when a cutoff happens, for the quiet moves searched beforehands)
   * Exact ordering:
     1) TT move
     2) Queen promotions
@@ -84,6 +87,7 @@ To make the results more tangible, here's a more intuitive way to put it:
 | v0.2.0 | MVV-LVA move ordering | 60+0.6 | 156.84 ± 27.07 | 249 / 131 / 62 |
 | v0.3.0 | TT aging. TT retained between moves | 60+0.6 | 9.38 ± 13.46| 264 / 499 / 237 |
 | v0.4.0 | Eval function additions | 60+0.6 | 113.08 ± 23.46| 232 / 209 / 71 |
+| v0.4.1 | History heuristic | 60+0.6 | 63.83 ± 19.29 | 233 / 295 / 116 |
 
 ## Known Issues
 * <b><span style="color:green">[Solved in v0.3.3]</span></b> Zobrist Hashing and En Passant: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.

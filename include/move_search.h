@@ -6,6 +6,7 @@
 #include <atomic>
 #include <functional>
 
+#include "move_order.h"
 #include "types.h"
 #include "board.h"
 #include "transposition_table.h"
@@ -88,6 +89,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
+        History& history, // History heuristic
         TimeControlStruct& time_control,
         SearchStats& stats
     );

@@ -2,6 +2,10 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.4.1] - 2026-08-17
+
+### Added
+- History Heuristic, to order quiet moves. Bonus of ``depth*depth`` for moves that cause a cutoff, penalty of ``depth*depth/2`` for moves searched before a move causing a cutoff.
 ## [0.4.0] - 2026-08-17
 
 ### Changed
@@ -47,7 +51,7 @@ All notable changes to LightKnight are documented in this file.
 ## [0.3.0] - 2026-08-07
 
 ### Added
-- TT aging mechanism. Entries encountered during the current search get refreshes (generation variable = current generation). Older entries gradually lose importance according to their age; Replacement based on depth is now: new_depth > old_depth - age_difference.
+- TT aging mechanism. Entries encountered during the current search get refreshes (generation variable = current generation). Older entries gradually lose importance according to their age; Replacement based on depth is now: ``new_depth > old_depth - age_difference``.
 
 ### Fixed
 - TT is no longer cleared between moves of the same game.
