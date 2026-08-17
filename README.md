@@ -45,15 +45,15 @@ a good summary of which can be found [here](https://gist.github.com/DOBRO/2592c6
 * <b>Move ordering:</b>
   * MVV-LVA for captures
   * Exact ordering:
-    1) TT move
-    2) Queen promotions
-    3) Winning captures
-    4) Equal captures
-    5) Underpromotions
-    6) Quiet moves
-    7) Losing captures
+    * TT move
+    * Queen promotions
+    * Winning captures
+    * Equal captures
+    * Underpromotions
+    * Quiet moves
+    * Losing captures
 
-* <b>Time management:</b> ``time / 20 + inc / 2``
+* <b>Time management:</b> ``base / 20 + inc / 2``
 
 ### UCI Protocol:
 * <b>Supported Commands:</b>
