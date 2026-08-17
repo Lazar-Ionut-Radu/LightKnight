@@ -23,6 +23,17 @@ namespace lightknight::tuner {
         bool maximize = false
     );
 
+    parameters::EngineParameters SteepestHillClimbing(
+        const PositionDataset& dataset,
+        const parameters::EngineParameters& params,
+        const std::vector<int>& offsets,
+        std::mt19937& rng,
+        size_t n_iters,
+        size_t n_restarts,
+        double texel_k,
+        bool maximize = false
+    );
+
 } // namespace lightknight::tuner
 
 #endif // LIGHTNIGHT_TUNER_HILL_CLIMBING_H

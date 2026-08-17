@@ -2,7 +2,7 @@
 
 All notable changes to LightKnight are documented in this file.
 
-## Unreleased
+## [0.4.0] - 2026-08-17
 
 ### Changed
 - Refactored engine parameters into their own file (params.h/params.cc). They are now owned by the engine class and given to the search / eval functions explicitly.
@@ -15,6 +15,7 @@ All notable changes to LightKnight are documented in this file.
     - ParametersFile: specify path to the .csv file containing parameters
     - SaveParameters
     - LoadParameters
+- Code for tuning parameters using the [Texel tuning method](https://chessprogramming.org/Texel%27s_Tuning_Method) with [hill climbing](https://en.wikipedia.org/wiki/Hill_climbing) and [SPSA](https://chessprogramming.org/SPSA). Whether or not it works is debatable, I had not had much success with it. 
 
 ## [0.3.4] - 2026-08-09
 

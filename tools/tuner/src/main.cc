@@ -7,6 +7,7 @@
 #include "position_dataset.h"
 #include "texel.h"
 #include "hill_climbing.h"
+#include "spsa.h"
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -29,19 +30,34 @@ int main(int argc, char* argv[]) {
 
     // Params
     constexpr double texel_k = 0.005;
-    
-    
+    constexpr double A = 50;
+    constexpr double a = 1'000'000;
+    constexpr double c = 5;
+    constexpr double n_iters = 10'000;
     lightknight::parameters::EngineParameters tuned_params;
+    
+    tuned_params = lightknight::tuner::SPSA(
+        dataset,
+        params,
+        rng,
+        n_iters,
+        texel_k,
+        A,
+        a,
+        c
+    );
+    /*
     tuned_params = lightknight::tuner::StochasticHillClimbing(
         dataset,
         params,
         {-1, 1},
         rng,
-        100,
+        10'000,
         1,
         texel_k,
         false
     );
+    */
     lightknight::parameters::SaveParameters(tuned_params, "tuned_params.csv");
 
     return 0;

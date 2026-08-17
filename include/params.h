@@ -40,6 +40,22 @@ namespace lightknight::parameters {
         bool tunable;
         int min;
         int max;
+        double continuous_value; // Only for tuning
+    
+        ParameterInfo(
+            std::string name,
+            int* value,
+            bool tunable,
+            int min,
+            int max
+        )
+            : name(std::move(name)),
+            value(value),
+            tunable(tunable),
+            min(min),
+            max(max),
+            continuous_value(*value)
+        {}
     };
 
     struct ParsedParameterName {

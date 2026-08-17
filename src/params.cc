@@ -183,48 +183,48 @@ namespace lightknight::parameters {
         // Tables for bonuses for passed pawns on a particular square.
         passed_pawns {
             { // Midgame
-                0,   0,   0,   0,   0,   0,   0,   0,
-                20,  20,  20,  20,  20,  20,  20,  20,
-                20,  20,  20,  20,  20,  20,  20,  20,
-                30,  30,  30,  30,  30,  30,  30,  30,
-                50,  50,  50,  50,  50,  50,  50,  50,
-                75,  75,  75,  75,  75,  75,  75,  75,  
-                100, 100, 100, 100, 100, 100, 100, 100,
-                0,   0,   0,   0,   0,   0,   0,   0
+                0,  0,  0,  0,  0,  0,  0,  0,
+               12,  0,  3, 34,  1, 11,  2, 14,
+                2, 18, 11, 28,  4,  1,  2, 19,
+                1, 14, 15,  1, 17, 23, 32, 27,
+               37, 49, 22, 15, 32, 31, 21, 28,
+               58, 38, 39, 40, 33, 51, 61, 59,  
+               65, 87, 98,106,100, 69, 84, 92,
+                0,  0,  0,  0,  0,  0,  0,  0
             },
             { // Endgame
-                0,   0,   0,   0,   0,   0,   0,   0,
-                20,  20,  20,  20,  20,  20,  20,  20,
-                20,  20,  20,  20,  20,  20,  20,  20,
-                30,  30,  30,  30,  30,  30,  30,  30,
-                50,  50,  50,  50,  50,  50,  50,  50,
-                75,  75,  75,  75,  75,  75,  75,  75,  
-                100, 100, 100, 100, 100, 100, 100, 100,
-                0,   0,   0,   0,   0,   0,   0,   0
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  2, 10, 14, 20,  1,  0,  0,
+                0,  0,  2, 19,  3,  1,  1,  1,
+                0,  1,  0,  8, 10,  0,  1,  0,
+                0,  8, 11,  4, 10,  0, 16,  0,
+               11, 16, 33, 10, 37, 23, 23,  1,  
+               35, 47, 68, 72, 79, 52, 77, 46,
+                0,  0,  0,  0,  0,  0,  0,  0
             },
         },
 
         // Tables for penalties for isolated pawns on a particular square.
         isolated_pawns {
             { // Midgame
-                0,   0,   0,   0,   0,   0,   0,   0,
-                -8, -12, -14, -16, -16, -14, -12, -10,
-                -8, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                0,   0,   0,   0,   0,   0,   0,   0
+                0,  0,  0,  0,  0,  0,  0,  0,
+               -5,-11, -9,-21,-28, -5,-10, -4,
+              -22, -5,-12,-19, -7, -4,-13, -2,
+               -2,-36,-12,-23,-10,-10, -5, -1,
+               -5,-24,-13,-23,-28,-18,-11, -9,
+               -6,-35,-19,-25,-18, -6,-19,-11,
+               -3,-19,-13,-37,-37,-13,-14,-21,
+                0,  0,  0,  0,  0,  0,  0,  0
             },
             { // Endgame
-                0,   0,   0,   0,   0,   0,   0,   0,
-                -8, -12, -14, -16, -16, -14, -12, -10,
-                -8, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                -10, -12, -14, -16, -16, -14, -12, -10,
-                0,   0,   0,   0,   0,   0,   0,   0
+                0,  0,  0,  0,  0,  0,  0,  0,
+              -10,-10,-14,-20,-16,  0, -3, -3,
+              -24,  0, -9, -4,-14, -1, -4, -1,
+              -16, -8, -8,-20,-29, -2,-11,  0,
+               -3,-33,-38,-30,-34,-26,-38,-20,
+               -7,-45,-38,-37,-48,-42,-35,-56,
+               -2,-45,-36,-22,-16,-37,-45,-34,
+                0,  0,  0,  0,  0,  0,  0,  0
             }
         },
 
@@ -295,14 +295,16 @@ namespace lightknight::parameters {
         },
 
         // Bonus for the side to move.
-        tempo {10, 10},
+        tempo {78, 32},
 
         // Bonus for having a bishop pair.
-        bishop_pair {23, 33} {};
+        bishop_pair {17, 24} {};
 
     EngineParameters::EngineParameters() :
         tt_size_mb {256} {};
     
+    // There must be a better way than to place here information about tuning 
+    // but I can't be bothered.
     std::vector<ParameterInfo> GetEvalParameterInfoList(const EngineParameters& params, bool strip_non_tunable) {
         std::vector<ParameterInfo> parameters;
 
@@ -371,11 +373,11 @@ namespace lightknight::parameters {
 
         // Eval passed pawns
         for (int game_phase : {0, 1}) {
-            for (int square = 0; square < 64; ++square) {
+            for (int square = 8; square < 56; ++square) {
                 parameters.push_back({
                     "eval_passed_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.passed_pawns[game_phase][square]),
-                    true,
+                    false,
                     0,
                     200
                 });
@@ -384,11 +386,11 @@ namespace lightknight::parameters {
 
         // Eval isolated pawns
         for (int game_phase : {0, 1}) {
-            for (int square = 0; square < 64; ++square) {
+            for (int square = 8; square < 56; ++square) {
                 parameters.push_back({
                     "eval_isolated_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.isolated_pawns[game_phase][square]),
-                    true,
+                    false,
                     -100,
                     0
                 });
@@ -397,26 +399,26 @@ namespace lightknight::parameters {
 
         // Eval protected pawns
         for (int game_phase : {0, 1}) {
-            for (int square = 0; square < 64; ++square) {
+            for (int square = 8; square < 56; ++square) {
                 parameters.push_back({
                     "eval_protected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.protected_pawns[game_phase][square]),
                     true,
                     0,
-                    100
+                    70
                 });
             }
         }
 
         // Eval connected pawns
         for (int game_phase : {0, 1}) {
-            for (int square = 0; square < 64; ++square) {
+            for (int square = 8; square < 56; ++square) {
                 parameters.push_back({
                     "eval_connected_pawns_" + std::to_string(game_phase) + "_" + std::to_string(square),
                     const_cast<int*>(&params.eval.connected_pawns[game_phase][square]),
                     true,
                     0,
-                    100
+                    70
                 });
             }
         }
@@ -490,7 +492,7 @@ namespace lightknight::parameters {
 
     std::vector<ParameterInfo> GetParameterInfoList(const EngineParameters& params, bool strip_non_tunable) {
         // -------------------- Evaluation ---------------------
-        std::vector<ParameterInfo> parameters = GetEvalParameterInfoList(params);
+        std::vector<ParameterInfo> parameters = GetEvalParameterInfoList(params, strip_non_tunable);
 
         // ---------------- Transposition Table ----------------
         // Transposition table size.
@@ -530,7 +532,6 @@ namespace lightknight::parameters {
         }
     }
 
-    // TODO: Make it nicer, so that it looks at the CSV header.
     void LoadParameters(EngineParameters& params, const std::string& path) {
         std::ifstream file(path);
         if (!file) {

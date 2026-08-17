@@ -6,6 +6,67 @@ I started the development of this engine only because of my interest in the subj
 
 In the beginning my goal was just to make something that can beat me at chess. It turns out that's not a hard task at all, so now I will try to make it as good as I can. We'll see how much I can improve it, however it's just a hobby project, thus the "Light" in its name.
 
+## Features
+Here is a summary of what I have yet implemented, that covers both algorithms, heuristics, choises regarding LightKnight's ability to play chess, as well as the subset of supported UCI features,
+a good summary of which can be found [here](https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf). There's also the changelog file for a more in depth look.
+
+### The Engine Itself:
+* <b>Board Representation:</b>
+  * Bitboards
+  * Zobrist hashing
+  * Supports loading from FEN
+
+* <b>Move Generation:</b>
+  * Legal move generation
+  * Magic bitboards for sliding pieces
+
+* <b>Search:</b>
+  * PVS: Principal Variation Search
+  * Quiescence Search
+  * TT: Transposition Table
+    * Aging mechanism
+    * Replace when ``new_depth > old_depth - age_diff``
+
+* <b>Evaluation:</b>
+  * Tapered eval: interpolates between midgame and endgame evals.
+  * Material count
+  * Piece mobility bonuses
+  * Piece-square tables:
+    * Piece positions
+    * Passed pawns
+    * Isolated pawns
+    * Connected pawns
+    * Defended pawns
+  * Doubles / Tripled pawns penalty
+  * King pawn shield bonuses
+  * Tempo bonus
+  * Bishop pair bonus
+
+* <b>Move ordering:</b>
+  * MVV-LVA for captures
+  * Exact ordering:
+    1) TT move
+    2) Queen promotions
+    3) Winning captures
+    4) Equal captures
+    5) Underpromotions
+    6) Quiet moves
+    7) Losing captures
+
+* <b>Time management:</b> ``time / 20 + inc / 2``
+
+### UCI Protocol:
+* <b>Supported Commands:</b>
+  * Commands: ``uci``, ``isready``, ``setoption``, ``ucinewgame``, ``position``, ``go``, ``stop``, ``quit``
+  * The ``position`` command supports both startpos and FEN + moves as parameters.
+  * The ``go`` command supports the following options: `wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`, `infinite`
+  
+* <b>Supported Options:</b> 
+  * ``ParameterFile <path>``: Specify the path to a parameter file. Default: ``params.csv``
+  * ``SaveParameters``: Load engine parameters from the file specified by ``ParametersFile``
+  * ``LoadParameters``: Save engine parameters to the file specified by ``ParametersFile``
+  * ``Hash <int>``: Size of the Transposition Table, in MB. Default: ``256``
+
 ## Strength Progression
 
 To get a sense of how well everything is coming together I'm keeping track of ELO changes between consecutive versions. I'm running SPRT tests with the help of the [fastchess](https://github.com/Disservin/fastchess) cli tool, using an [opening book](https://github.com/official-stockfish/books/blob/master/8moves_v3.pgn.zip) borrowed from Stockfish.
@@ -22,26 +83,11 @@ To make the results more tangible, here's a more intuitive way to put it:
 | v0.1.0 | Initial release | - | - | - |
 | v0.2.0 | MVV-LVA move ordering | 60+0.6 | 156.84 ± 27.07 | 249 / 131 / 62 |
 | v0.3.0 | TT aging. TT retained between moves | 60+0.6 | 9.38 ± 13.46| 264 / 499 / 237 |
-
-## UCI Commands
-
-LightKnight currently supports the following UCI commands:
-
-* `uci`: identifies the engine
-* `isready`: responds with `readyok`
-* `setoption name <name> value <value>`: changes internal parameters of the engine
-* `ucinewgame`: resets the engine state for a new game
-* `position startpos [moves <move1> <move2> ...]`: loads the starting position and optionally applies a sequence of moves
-* `position fen <fen> [moves <move1> <move2> ...]`: loads a position from FEN and optionally applies a sequence of moves
-* `go`: starts searching the current position
-
-  * Supported options: `wtime`, `btime`, `winc`, `binc`, `movestogo`, `movetime`, `depth`, `infinite`
-* `stop`: stops the current search and returns the best move found
-* `quit`: stops the engine and exits
+| v0.4.0 | Eval function additions | 60+0.6 | 113.08 ± 23.46| 232 / 209 / 71 |
 
 ## Known Issues
-
 * <b><span style="color:green">[Solved in v0.3.3]</span></b> Zobrist Hashing and En Passant: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
+* Fastchess reports that PV continues after 50 move rule draw.
 
 ## Compilation
 Building mode is controlled by the ```MODE``` varible, which can be either ```debug``` or ```release```. Debug build retain assertions and debugging information, while release build include optimisation flags. Keep in mind that compiling the engine might take longer than expected because move generation for sliding pieces is precomputed, at compile time.
@@ -114,3 +160,4 @@ make magics-gen
 ## Acknowledgements
 I made use of the [ChessProgramming Wiki](https://www.chessprogramming.org/) as well as the [TalkChess Forum](https://talkchess.com/) extensively for researching aspects of chess engine development. You can find everything you need there. Also, [Sebastian Lague](https://www.youtube.com/c/SebastianLague) has a nice 2-part series on the subject which sparked my interest and is a great starting point.
 
+I also use [fastchess](https://github.com/Disservin/fastchess) for SPRT testing and [Cute Chess GUI](https://github.com/cutechess/cutechess) whenever I want to challange the engine myself, or just to see how it plays against other engines I take from the [CCRL list](https://computerchess.org.uk/4040/index.html). 

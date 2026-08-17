@@ -155,4 +155,126 @@ namespace lightknight::tuner {
         return best_params;
     }
 
+    parameters::EngineParameters SteepestHillClimbing(
+        const PositionDataset& dataset,
+        const parameters::EngineParameters& params,
+        const std::vector<int>& offsets,
+        std::mt19937& rng,
+        size_t n_iters,
+        size_t n_restarts,
+        double texel_k,
+        bool maximize
+    ) {
+        if (offsets.empty() || n_restarts == 0)
+            return params;
+
+        // Keep the best parameters found across all restarts.
+        parameters::EngineParameters best_params = params;
+        double best_value = TexelLoss(dataset, params, texel_k);
+
+        // Run the specified number of hill climbing searches.
+        for (size_t restart = 0; restart < n_restarts; ++restart) {
+             // For the first run, keep those same parameters, otherwise randomize them.
+            parameters::EngineParameters curr_params;
+            if (restart > 0)
+                curr_params = GetRandomParameters(rng);
+            else
+                curr_params = params;
+
+            // Get the list of parameters. 
+            auto params_vector = parameters::GetParameterInfoList(curr_params, true);
+
+            // Compute the current value.
+            double curr_value = TexelLoss(dataset, curr_params, texel_k);
+            
+            // Printing some info.
+            std::cout << "Restart " << restart + 1 << "/" << n_restarts
+                      << ": starting loss = " << curr_value << "\n";
+
+            // Num of neighbouring states to this one.
+            const size_t num_offsets = offsets.size();
+            const size_t num_neighbours = params_vector.size() * num_offsets;
+
+            // Run for the specified number of iterations.
+            size_t n_iterations_done = 0;
+            for (size_t iter = 0; iter < n_iters; ++iter) {
+                // Keep track of the best neighbour.
+                parameters::EngineParameters best_neighbour_params = curr_params;
+                double best_neighbour_value = curr_value;
+                
+                // Iterate through the neighbours
+                bool improved = false;
+                for (size_t neighbour = 0; neighbour < num_neighbours; ++neighbour) {
+                    // Find the change needed to be done for this neighbour.
+                    size_t param_idx = neighbour / num_offsets;
+                    size_t offset_idx = neighbour % num_offsets;
+                    int param_old_value = *params_vector[param_idx].value;
+                    int param_new_value = *params_vector[param_idx].value + offsets[offset_idx];
+
+                    // Check it keeps the param within its bounds.
+                    if (param_new_value > params_vector[param_idx].max ||
+                        param_new_value < params_vector[param_idx].min)
+                        continue;
+                        
+                    // Apply the change to the parameter, so we move to the neighbour state.
+                    *params_vector[param_idx].value = param_new_value;
+
+                    // If this state is better, move to it immediately.
+                    double neighbour_value = TexelLoss(dataset, curr_params, texel_k);
+                    bool is_better = maximize 
+                        ? (neighbour_value > curr_value)
+                        : (neighbour_value < curr_value);
+                        
+                    if (is_better) {
+                        best_neighbour_value = neighbour_value;
+                        best_neighbour_params = curr_params;
+                        improved = true;
+                    }
+                        
+                    // Undo the change, moving back to the state this iteration began on.
+                    *params_vector[param_idx].value = param_old_value;
+                }
+                n_iterations_done++;
+
+                // If no neighbour is better than stop this run.
+                if (!improved) {
+                    break;
+                }
+                // Move to the best neighbour.
+                else {
+                    curr_params = best_neighbour_params;
+                    curr_value = best_neighbour_value;
+                }
+
+                // Print some info.
+                if (n_iterations_done % 10 == 0) {
+                    std::cout << "Iteration " << n_iterations_done
+                              << ": current loss = " << curr_value << "\n";
+
+                    parameters::SaveParameters(curr_params, "./tuned_params.csv");
+                }
+            }
+
+            // Update the best parameters found if this run improved them
+            bool is_better = maximize
+                ? curr_value > best_value
+                : curr_value < best_value;
+
+            if (is_better) {
+                best_value = curr_value;
+                best_params = curr_params;
+            }
+
+            // Print some info
+            std::cout << "Restart " << restart + 1 << "/" << n_restarts
+                      << ": final loss = " << curr_value
+                      << ", num iterations = " << n_iterations_done;
+            if (is_better)
+                std::cout << " (new best)";
+            std::cout << "\n";
+        }
+        
+        std::cout << "Best loss = " << best_value << '\n';
+        return best_params;
+    }
 } // namespace lightknight::tuner

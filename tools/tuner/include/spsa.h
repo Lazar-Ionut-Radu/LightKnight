@@ -12,6 +12,7 @@ namespace lightknight::tuner {
         std::mt19937& rng,
         size_t n_iters,
         double texel_k,
+        double A,
         double a,
         double c,
         double alpha = 0.602,
