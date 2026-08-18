@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <vector>
+#include <cmath>
 
 #include "board.h"
 #include "types.h"
@@ -143,11 +144,14 @@ namespace lightknight::search {
         // History heuristic
         History history{};
 
+        // Killer move heuristic
+        Killers killers{params.n_killer_moves};
+
         int result;
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
             stats.selective_depth = 0;
 
-            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, params, tt, history, time_control, stats);
+            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, params, tt, history, killers, time_control, stats);
     
             if (time_control.stopped)
                 break;
@@ -184,6 +188,7 @@ namespace lightknight::search {
         const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
         History& history, // History heuristic
+        Killers& killers, // Killer heuristics
         TimeControlStruct& time_control,
         SearchStats& stats
     ) {
@@ -279,7 +284,7 @@ namespace lightknight::search {
 
         // Compute the move scores.
         std::vector<int>& scores = score_lists[depth];
-        ScoreMoves(moves, scores, num_moves, board, tt_entry, history);
+        ScoreMoves(moves, scores, num_moves, board, tt_entry, history, killers, depth);
 
         // Keep track of the best move of the children nodes.
         int best_score = -search::kInfinity;
@@ -292,6 +297,7 @@ namespace lightknight::search {
         size_t initial_num_moves = num_moves;
         while (num_moves > 0) {
             // Pick the best remaining move.
+            // That move gets moved at the end of the moves vector and num_moves is decremented.
             const Move move = PickMove(moves, scores, num_moves);
 
             // Prepare the needed stuff for {Make | Unamake}Move()
@@ -308,17 +314,17 @@ namespace lightknight::search {
             board.MakeMove(move, undo);
             if (first_move) {
                 // Full search
-                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, time_control, stats);
+                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
                 first_move = false;
             } else {
                 // Zero-window search.
-                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, time_control, stats);
+                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, time_control, stats);
+                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
             }
             board.UnmakeMove(move, undo);
             
@@ -348,16 +354,26 @@ namespace lightknight::search {
                 
                 // History heuristic:
                 // History score bonus for quiet moves that cause a cutoff.
+                bool is_quiet = !board.IsCapture(move) && !move.IsPromotion();
                 int history_bonus = depth * depth;
-                if (!board.IsCapture(move) && !move.IsPromotion())
+                if (is_quiet)
                     history.Update(move, board.turn, history_bonus);
-                
+
                 // History score penalty for quiet moves searched before.
-                for (size_t i = 0; i < initial_num_moves - num_moves; ++i) {
+                // Because of how PickMoves() modifies the moves vector, moves[num_moves] is the
+                // currently picked move (that caused a cutoff) and the moves after that are the
+                // previously searched moves. 
+                for (size_t i = num_moves + 1; i < initial_num_moves; ++i) {
                     if (!board.IsCapture(moves[i]) && !moves[i].IsPromotion())
                         history.Update(moves[i], board.turn, -history_bonus / 2);
                 }
                 
+                // Killer heuristic.
+                if (is_quiet) {
+                    // Mate killers.
+                    killers.Update(move, depth);
+                
+                }
                 return best_score; // Fail-soft.
             }
         }
@@ -634,6 +650,7 @@ namespace lightknight::search {
         const parameters::EngineParameters&,
         TranspositionTable&,
         History&,
+        Killers&,
         TimeControlStruct&,
         SearchStats&
     );
@@ -649,6 +666,7 @@ namespace lightknight::search {
         const parameters::EngineParameters&,
         TranspositionTable&,
         History&,
+        Killers&,
         TimeControlStruct&,
         SearchStats&
     );

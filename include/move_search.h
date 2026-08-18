@@ -6,7 +6,6 @@
 #include <atomic>
 #include <functional>
 
-#include "move_order.h"
 #include "types.h"
 #include "board.h"
 #include "transposition_table.h"
@@ -17,6 +16,47 @@ namespace lightknight::search {
     inline constexpr int kMateScore = 120'000;
     inline constexpr int kMaxDepth = 128;
     inline constexpr int kCallsPerClockCheck = 1024;
+
+    inline constexpr int kMaxHistoryScore = 65'536;
+    struct History{
+        int scores[kNumColors][kNumSquares][kNumSquares]{};
+
+        inline void Update(const Move& move, Color color, int value) {
+            const int history = this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()];
+            
+            this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()] += 
+                value - history * std::abs(value) / kMaxHistoryScore;
+        }
+        
+        inline int Get(const Move& move, Color color) const {
+            return this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()];
+        }
+    };
+
+    struct Killers{
+        std::vector<std::vector<Move>> moves;
+
+        Killers(size_t num_killers) : 
+            moves(kMaxDepth, std::vector<Move>(num_killers)) {};
+
+        inline void Update(const Move& move, int ply) {
+            // Don't add duplicates.
+            for (const Move& killer : moves[ply]) {
+                if (killer == move)
+                    return;
+            }
+
+            // Shift existing killers to the right.
+            for (size_t i = 0 ; i + 1 < moves[ply].size(); ++i)
+                moves[ply][i] = moves[ply][i + 1];
+
+            moves[ply].back() = move;
+        }
+
+        inline const Move& Get(int ply, size_t index) const {
+            return moves[ply][index];
+        }
+    };
 
     struct TimeControlStruct {
         std::chrono::steady_clock::time_point deadline;
@@ -90,6 +130,7 @@ namespace lightknight::search {
         const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
         History& history, // History heuristic
+        Killers& killers, // Killer heuristic
         TimeControlStruct& time_control,
         SearchStats& stats
     );

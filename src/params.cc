@@ -7,8 +7,7 @@
 #include "params.h"
 
 namespace lightknight::parameters {
-    // TODO: write a tuner so I can find values of my own / not guessed probably totally wrong.
-
+    // TODO: sort out the tuner so I can have my own params
     EvalParameters::EvalParameters() :
         // ---------------------------------------------
         // ----------- Evaluation Parameters -----------
@@ -301,7 +300,8 @@ namespace lightknight::parameters {
         bishop_pair {17, 24} {};
 
     EngineParameters::EngineParameters() :
-        tt_size_mb {256} {};
+        tt_size_mb {kDefaultHashSizeMB},
+        n_killer_moves {kDefaultNKillerMoves} {};
     
     // There must be a better way than to place here information about tuning 
     // but I can't be bothered.

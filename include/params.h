@@ -6,7 +6,10 @@
 #include <types.h>
 
 namespace lightknight::parameters {
-    
+    // Default engine params.
+    const int kDefaultHashSizeMB = 256;
+    const int kDefaultNKillerMoves = 2;
+
     struct EvalParameters {
         int piece_values[2][5];
         int psqt[2][6][64];
@@ -29,7 +32,8 @@ namespace lightknight::parameters {
         EvalParameters eval = EvalParameters();
 
         int tt_size_mb;
-        
+        int n_killer_moves;
+
         // Constructor with default values.
         EngineParameters();
     };

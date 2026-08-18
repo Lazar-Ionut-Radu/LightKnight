@@ -6,26 +6,17 @@
 
 #include "board.h"
 #include "transposition_table.h"
+#include "move_search.h"
 
 namespace lightknight::search {
-    constexpr int kTTMoveScore = 100'000;
-    constexpr int kQueenPromotionBase = 400'000;
-    constexpr int kWinningCaptureBase = 300'000;
-    constexpr int kEqualCaptureBase = 200'000;
-    constexpr int kUnderpromotionBase = 100'000;
-    constexpr int kQuietMoveScore = 0;
+    constexpr int kTTMoveScore = 1'000'000;
+    constexpr int kQueenPromotionBase = 500'000;
+    constexpr int kWinningCaptureBase = 400'000;
+    constexpr int kEqualCaptureBase = 300'000;
+    constexpr int kUnderpromotionBase = 200'000;
+    constexpr int kKillerMoveBase = 100'000;
+    constexpr int kQuietMoveBase = 0;
     constexpr int kLosingCaptureBase = -100'000;
-
-    struct History{
-        int scores[kNumColors][kNumSquares][kNumSquares]{};
-
-        inline void Update(const Move& move, Color color, int value) {
-            this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()] += value;
-        }
-        inline int Get(const Move& move, Color color) const {
-            return this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()];
-        }
-    };
 
     // Scores for capture moves according to MVV-LVA.
     // MvvLvaScore[Victim][Attacker]
@@ -45,7 +36,9 @@ namespace lightknight::search {
         const Board& board,
         const Move& move,
         const TTEntry* tt_entry,
-        const History& history
+        const History& history,
+        const Killers& killers,
+        const int depth
     );
 
     // Score moves for Quiescence search.
@@ -62,7 +55,9 @@ namespace lightknight::search {
         size_t num_moves,
         const Board& board,
         const TTEntry* tt_entry,
-        const History& history
+        const History& history,
+        const Killers& Killers,
+        const int depth
     );
 
     // Compute the score of moves for Quiescence search.

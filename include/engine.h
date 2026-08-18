@@ -12,8 +12,6 @@
 #include "params.h"
 
 namespace lightknight {
-    // Default engine params.
-    const int kDefaultHashSizeMB = 256;
     const std::string kDefaultParamFilePath = "params.csv";
 
     struct SearchLimits {

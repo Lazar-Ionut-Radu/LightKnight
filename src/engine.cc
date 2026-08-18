@@ -15,7 +15,7 @@ namespace lightknight {
 
     Engine::Engine() 
         : params(),
-          tt(kDefaultHashSizeMB)
+          tt(parameters::kDefaultHashSizeMB)
     {
         this->board.FromFEN(kStartFen);
 
@@ -23,7 +23,7 @@ namespace lightknight {
             { // Transposition table size.
                 .name = "Hash",
                 .type = OptionType::kSpin,
-                .default_value = std::to_string(kDefaultHashSizeMB),
+                .default_value = std::to_string(parameters::kDefaultHashSizeMB),
                 .min = 1,
                 .max = 1024
             },
@@ -164,7 +164,6 @@ namespace lightknight {
         else if (name == "SaveParameters") {
             SaveParameters(this->params_file_path);
         }
-        
     }
 
     bool Engine::IsOptionValueValid(const Option& option, const std::string& value) {

@@ -2,6 +2,15 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## [0.4.2]
+
+### Fixed
+- History heuristic bug where history scores would get so big causing them to be picked first. Changed the formula for updating scores and bounded them.
+- History heuristic bug where penalties would be applied to moves not searched rather than searched moves.
+
+### Added
+- Killer heuristic: 2 moves per ply. Search first killers from this ply then from 2 plies ago.
+
 ## [0.4.1] - 2026-08-17
 
 ### Added

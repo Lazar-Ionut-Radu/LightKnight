@@ -7,7 +7,9 @@ namespace lightknight::search {
         const Board& board,
         const Move& move,
         const TTEntry* tt_entry,
-        const History& history
+        const History& history,
+        const Killers& killers,
+        const int depth
     ) {
         // TT Entry move first.
         if (tt_entry && move == tt_entry->move)
@@ -54,8 +56,21 @@ namespace lightknight::search {
             return kUnderpromotionBase + prom_idx;
         }
 
-        // Quiet move, ordered by history heuristic
-        return kQuietMoveScore + history.Get(move, board.turn);
+        // Killer quiet moves.
+        for (int index = 0; index < killers.moves[depth].size(); index++) {
+            if (killers.Get(depth, index) == move)
+                return kKillerMoveBase + index + 100;
+        }
+        
+        if (depth >= 2) {
+            for (int index = 0; index < killers.moves[depth - 2].size(); index++) {
+                if (killers.Get(depth - 2, index) == move)
+                    return kKillerMoveBase + index;
+            }
+        }
+
+        // History quiet moves.
+        return kQuietMoveBase + history.Get(move, board.turn);
     }
 
     inline int ScoreQSMove(
@@ -110,7 +125,7 @@ namespace lightknight::search {
         }
 
         // If there are quiet moves, no history here.
-        return kQuietMoveScore;
+        return kQuietMoveBase;
     }
 
     // Compute the score of the moves.
@@ -120,10 +135,12 @@ namespace lightknight::search {
         size_t num_moves,
         const Board& board,
         const TTEntry* tt_entry,
-        const History& history
+        const History& history,
+        const Killers& killers,
+        const int depth
     ) {
         for (size_t idx = 0; idx < num_moves; ++idx) {
-            scores[idx] = ScoreMove(board, moves[idx], tt_entry, history);
+            scores[idx] = ScoreMove(board, moves[idx], tt_entry, history, killers, depth);
         }
     }
 
