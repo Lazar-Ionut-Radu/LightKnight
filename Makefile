@@ -17,6 +17,7 @@ NATIVE ?= 0
 ifeq ($(MODE),debug)
 	BUILD_DIR := build/debug
 	CXXFLAGS := $(COMMON_CXXFLAGS) -Og -g3
+
 else ifeq ($(MODE),release)
 	BUILD_DIR := build/release
 	CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -DNDEBUG
@@ -24,8 +25,17 @@ else ifeq ($(MODE),release)
 	ifeq ($(NATIVE),1)
 		CXXFLAGS += -march=native
 	endif
+
+else ifeq ($(MODE),profile)
+	BUILD_DIR := build/profile
+	CXXFLAGS := $(COMMON_CXXFLAGS) -O3 -g3
+
+	ifeq ($(NATIVE),1)
+		CXXFLAGS += -march=native
+	endif
+
 else
-	$(error Invalid MODE '$(MODE)'; expected debug or release)
+	$(error Invalid MODE '$(MODE)'; expected debug, release, or profile)
 endif
 
 LDFLAGS :=
@@ -57,8 +67,6 @@ TEST_EXE := $(BUILD_DIR)/tests
 
 .PHONY: \
 	all \
-	debug \
-	release \
 	tests \
 	test \
 	benchmark \
@@ -69,11 +77,9 @@ TEST_EXE := $(BUILD_DIR)/tests
 
 all: $(ENGINE_EXE)
 
-debug:
-	$(MAKE) MODE=debug all
-
-release:
-	$(MAKE) MODE=release all
+# -------------------------------------------------------------------
+# Tests
+# -------------------------------------------------------------------
 
 # Compile .cc -> .o and create subdirectories automatically.
 $(BUILD_DIR)/%.o: %.cc Makefile
@@ -87,10 +93,6 @@ $(ENGINE_EXE): $(OBJ_ENGINE)
 # Link tests.
 $(TEST_EXE): $(OBJ_TEST)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS) $(TEST_LDLIBS)
-
-# -------------------------------------------------------------------
-# Tests
-# -------------------------------------------------------------------
 
 # Compile tests without running.
 tests: $(TEST_EXE)
