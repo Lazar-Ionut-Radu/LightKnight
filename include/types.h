@@ -107,8 +107,8 @@ namespace lightknight {
     }
 
     // For log2 of power of 2.
-    static const uint64_t kDeBruijeMagic = 0x03F79D71B4CB0A89ULL;
-    static const std::array<uint8_t, 64> kDeBruije = {
+    constexpr uint64_t kDeBruijeMagic = 0x03F79D71B4CB0A89ULL;
+    constexpr std::array<uint8_t, 64> kDeBruije = {
          0,  1, 48,  2, 57, 49, 28,  3,
         61, 58, 50, 42, 38, 29, 17,  4,
         62, 55, 59, 36, 53, 51, 43, 22,
@@ -124,7 +124,7 @@ namespace lightknight {
     }
     
     // Expects the bitboard to only have one set bit, to be a power of 2.
-    inline Square BitboardToSquare(uint64_t bitboard_sq) {return (Square)(kDeBruije[(bitboard_sq * kDeBruijeMagic) >> 58]);}
+    constexpr Square BitboardToSquare(uint64_t bitboard_sq) {return (Square)(kDeBruije[(bitboard_sq * kDeBruijeMagic) >> 58]);}
     constexpr uint64_t SquareToBitboard(Square square) { return (1ULL << square);}
     inline uint64_t LSB(uint64_t bitboard) {return bitboard & -bitboard;}
     inline Square LSBSquare(uint64_t bitboard) {return BitboardToSquare(LSB(bitboard));}
@@ -155,21 +155,32 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . . * . . . .
     //   2  . . . . . . . .                 2  . . . * . . . .
     //   1  . . . . . . . .                 1  . . . * . . . .
+    constexpr auto kForwardFillBB = [] {
+        std::array<uint64_t, kNumColors * kNumSquares> table{};
+
+        for (int color = 0; color < 2; ++color) {
+            for (int square = 0; square < 64; ++square) {
+                const uint64_t bb = 1ULL << square;
+
+                table[color * kNumSquares + square] = (color == static_cast<int>(Color::kWhite)) 
+                    ? ~(bb | (bb - 1)) & FileBB(bb) : (bb - 1) & FileBB(bb);
+            }
+        }
+
+        return table;
+    }();
+
     constexpr uint64_t ForwardFillBB(uint64_t bitboard_sq, Color color) {
         if (!bitboard_sq)
             return 0ull;
 
-        return (color == Color::kWhite)
-            ?  ~(bitboard_sq | (bitboard_sq - 1)) & FileBB(bitboard_sq) 
-            : (bitboard_sq - 1) & FileBB(bitboard_sq);
+        return kForwardFillBB[64 * color + BitboardToSquare(bitboard_sq)];
     }
     constexpr uint64_t BackwardFillBB(uint64_t bitboard_sq, Color color) {
         if (!bitboard_sq)
             return 0ull;
         
-        return (color == Color::kWhite)
-            ? (bitboard_sq - 1) & FileBB(bitboard_sq) 
-            : ~(bitboard_sq | (bitboard_sq - 1)) & FileBB(bitboard_sq);
+        return kForwardFillBB[64 * (1-color) + BitboardToSquare(bitboard_sq)];
     }
 
     //   8  . . * . * . . .                 8  . . . . . . . .
@@ -180,11 +191,31 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . * . * . . .
     //   2  . . . . . . . .                 2  . . * . * . . .
     //   1  . . . . . . . .                 1  . . * . * . . .
+    constexpr auto kForwardAdjacentFillBB = [] {
+        std::array<uint64_t, kNumColors * kNumSquares> table{};
+
+        for (int color = 0; color < 2; ++color) {
+            for (int square = 0; square < 64; ++square) {
+                const uint64_t bb = 1ULL << square;
+
+                table[color * kNumSquares + square] = kForwardFillBB[color * kNumSquares + BitboardToSquare(West(SquareToBitboard(static_cast<Square>(square))))]
+                    | kForwardFillBB[color * kNumSquares + BitboardToSquare(East(SquareToBitboard(static_cast<Square>(square))))];
+            }
+        }
+
+        return table;
+    } ();
     constexpr uint64_t ForwardAdjacentFillBB(uint64_t bitboard_sq, Color color) {
-        return ForwardFillBB(West(bitboard_sq), color) | ForwardFillBB(East(bitboard_sq), color);
+        if (!bitboard_sq)
+            return 0ull;
+
+        return kForwardAdjacentFillBB[64 * color + BitboardToSquare(bitboard_sq)];
     }
     constexpr uint64_t BackwardAdjacentFillBB(uint64_t bitboard_sq, Color color) {
-        return BackwardFillBB(West(bitboard_sq), color) | BackwardFillBB(East(bitboard_sq), color);
+        if (!bitboard_sq)
+            return 0ull;
+
+        return kForwardAdjacentFillBB[64 * (1-color) + BitboardToSquare(bitboard_sq)];
     }
 
     // Examples for the ForwardThreeFillBB.
@@ -196,11 +227,31 @@ namespace lightknight {
     //   3  . . . . . . . .                 3  . . * * * . . .
     //   2  . . . . . . . .                 2  . . * * * . . .
     //   1  . . . . . . . .                 1  . . * * * . . .
+    constexpr auto kForwardThreeFillBB = [] {
+        std::array<uint64_t, kNumColors * kNumSquares> table{};
+
+        for (int color = 0; color < 2; ++color) {
+            for (int square = 0; square < 64; ++square) {
+                const uint64_t bb = 1ULL << square;
+
+                table[color * kNumSquares + square] = kForwardFillBB[color * kNumSquares + square] 
+                    | kForwardAdjacentFillBB[color * kNumSquares + square] ;
+            }
+        }
+
+        return table;
+    } ();
     constexpr uint64_t ForwardThreeFillBB(uint64_t bitboard_sq, Color color) {
-        return ForwardFillBB(bitboard_sq, color) | ForwardAdjacentFillBB(bitboard_sq, color);
+        if (!bitboard_sq)
+            return 0ull;
+
+        return kForwardThreeFillBB[64 * color + BitboardToSquare(bitboard_sq)];
     }
     constexpr uint64_t BackwardThreeFillBB(uint64_t bitboard_sq, Color color) {
-        return BackwardFillBB(bitboard_sq, color) | BackwardAdjacentFillBB(bitboard_sq, color);
+        if (!bitboard_sq)
+            return 0ull;
+
+        return kForwardThreeFillBB[64 * (1-color) + BitboardToSquare(bitboard_sq)];
     }
     
     enum PromotionPieceType : uint16_t {
