@@ -30,7 +30,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, bb] : bishop_tests) {
-            CHECK(movegen::kBishopRelevantOccupancy[sq] == bb);
+            CHECK(kBishopBlockersMaskBB[sq] == bb);
         }
     }
 
@@ -49,7 +49,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, bb] : rook_tests) {
-            CHECK(movegen::kRookRelevantOccupancy[sq] == bb);
+            CHECK(kRookBlockersMaskBB[sq] == bb);
         }
     }
 }
@@ -71,7 +71,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, color, bb] : pawn_tests) {
-            CHECK(movegen::PawnAttackBitboard(sq, color) == bb);
+            CHECK(PawnAttackBB(sq, color) == bb);
         }
     };
 
@@ -88,7 +88,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, bb] : knight_tests) {
-            CHECK(movegen::kKnightAttacks[sq] == bb);
+            CHECK(kKnightAttacksBB[sq] == bb);
         }
     }
 
@@ -110,7 +110,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, blockers, bb] : bishop_tests) {
-            CHECK(movegen::BishopAttackBitboard(sq, blockers) == bb);
+            CHECK(BishopAttackBB(sq, blockers) == bb);
         }
 
     }
@@ -134,7 +134,7 @@ TEST_CASE(
         };
         
         for (auto& [sq, blockers, bb] : rook_tests) {
-            CHECK(movegen::RookAttackBitboard(sq, blockers) == bb);
+            CHECK(RookAttackBB(sq, blockers) == bb);
         }
     }
 
@@ -156,7 +156,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, blockers, bb] : queen_tests) {
-            CHECK(movegen::QueenAttackBitboard(sq, blockers) == bb);
+            CHECK(QueenAttackBB(sq, blockers) == bb);
         }
     }
 
@@ -171,7 +171,7 @@ TEST_CASE(
         };
 
         for (auto& [sq, bb] : king_tests) {
-            CHECK(movegen::kKingAttacks[sq] == bb);
+            CHECK(kKingAttacksBB[sq] == bb);
         }
     }
 }

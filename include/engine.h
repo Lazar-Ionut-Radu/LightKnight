@@ -9,6 +9,7 @@
 #include "board.h"
 #include "move_search.h"
 #include "transposition_table.h"
+#include "pawn_hash.h"
 #include "params.h"
 
 namespace lightknight {
@@ -81,6 +82,7 @@ namespace lightknight {
 
         // Everything making up the search algorithm.
         search::TranspositionTable tt;
+        eval::PawnHash pawn_hash;
         search::TimeControlStruct time_control_struct;
 
         // Engine options, to be set using UCI

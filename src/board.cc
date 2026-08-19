@@ -134,6 +134,7 @@ namespace lightknight {
         
         // Finally compute the zobrist hash.
         this->zobrist_hash = this->ComputeZobristHash();
+        this->pawn_zobrist_hash = this->ComputePawnZobristHash();
 
         // Allocate mem for the position hashes history vector.
         this->hashes_history.clear();
@@ -164,7 +165,8 @@ namespace lightknight {
             | piece_bitboards[Piece::kBlackRook] | piece_bitboards[Piece::kBlackQueen] | piece_bitboards[Piece::kBlackKing];
         
         board.zobrist_hash = board.ComputeZobristHash();
-        
+        board.pawn_zobrist_hash = board.ComputePawnZobristHash();
+
         board.hashes_history.clear();
         board.hashes_history.reserve(256);
         board.hashes_history.push_back(board.zobrist_hash);
@@ -185,24 +187,13 @@ namespace lightknight {
         this->fullmoves = 1;
         this->turn = lightknight::Color::kWhite;
         this->zobrist_hash = this->ComputeZobristHash();
+        this->pawn_zobrist_hash = this->ComputePawnZobristHash();
 
         this->hashes_history.clear();
         this->hashes_history.reserve(256);
         this->hashes_history.push_back(this->zobrist_hash);
     }
     
-    void Board::XorEnPassantHash(uint64_t ep) {
-        if (ep == 0)
-            return;
-
-        assert((ep & (ep - 1)) == 0); // Exactly one bit.
-
-        const unsigned square = BitboardToSquare(ep);
-        assert(square < 64);
-
-        this->zobrist_hash ^= zobrists.en_passant[square];
-    }
-
     uint64_t Board::ComputeZobristHash() const {
         uint64_t hash = 0;
 
@@ -233,6 +224,28 @@ namespace lightknight {
         return hash;
     }
 
+    uint64_t Board::ComputePawnZobristHash() const {
+        uint64_t hash = 0;
+
+        for (size_t pawn : {Piece::kWhitePawn, Piece::kBlackPawn}) {
+            uint64_t pawns = this->piece_bitboards[pawn];
+
+            while (pawns != 0) {
+                const unsigned square = std::countr_zero(pawns);
+                hash ^= lightknight::zobrists.piece_square[pawn][square];
+
+                // Remove LSB
+                pawns &= pawns - 1;
+            }
+        }
+    
+        // En passant
+        if (en_passant != 0)
+            hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+    
+        return hash;
+    }
+
     // Checks if this square is attacked by a piece of the specified color.
     bool Board::IsSquareAttacked(uint64_t square_bb, Color my_color) const {
         Color attacker_color = (Color)(1 - my_color);
@@ -240,8 +253,8 @@ namespace lightknight {
 
         // Compute diagonal and straight attacks from the king's POV to find possible attackers.
         uint64_t blockers = this->color_bitboards[0] | this->color_bitboards[1];
-        uint64_t straights = lightknight::movegen::RookAttackBitboard(sq, blockers);
-        uint64_t diagonals = lightknight::movegen::BishopAttackBitboard(sq, blockers);
+        uint64_t straights = RookAttackBB(sq, blockers);
+        uint64_t diagonals = BishopAttackBB(sq, blockers);
 
         bool check_on_diagonals = diagonals &
             (this->piece_bitboards[Piece::kWhiteBishop + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]);
@@ -249,11 +262,11 @@ namespace lightknight {
             (this->piece_bitboards[Piece::kWhiteRook + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]);
     
         // Compute knight attacks from the king's POV to find checks
-        uint64_t knights_attacks = lightknight::movegen::kKnightAttacks[sq];
+        uint64_t knights_attacks = kKnightAttacksBB[sq];
         bool check_by_knight = knights_attacks & this->piece_bitboards[Piece::kWhiteKnight + 6*attacker_color];
 
         // Compute pawn attacks from the king's POV to find checks
-        uint64_t pawn_attacks = lightknight::movegen::PawnAttackBitboard(sq, my_color);
+        uint64_t pawn_attacks = PawnAttackBB(sq, my_color);
         bool check_by_pawn = pawn_attacks & this->piece_bitboards[Piece::kWhitePawn + 6*attacker_color];
 
         // Verdict.
@@ -324,11 +337,17 @@ namespace lightknight {
         if (captured_piece != lightknight::Piece::kEmpty) {
             this->color_bitboards[GetPieceColor(captured_piece)] &= ~sq;
             this->zobrist_hash ^= zobrists.piece_square[captured_piece][square];
+
+            if (captured_piece == Piece::kWhitePawn || captured_piece == Piece::kBlackPawn)
+                this->pawn_zobrist_hash ^= zobrists.piece_square[captured_piece][square];
         }
 
         this->piece_bitboards[piece] |= sq; // Put piece
         this->color_bitboards[GetPieceColor(piece)] |= sq;
         this->zobrist_hash ^= zobrists.piece_square[piece][square];
+
+        if (piece == Piece::kWhitePawn || piece == Piece::kBlackPawn)
+            this->pawn_zobrist_hash ^= zobrists.piece_square[piece][square];
     }
 
     void Board::RemovePiece(uint64_t sq) {
@@ -343,6 +362,8 @@ namespace lightknight {
         this->piece_bitboards[lightknight::Piece::kEmpty] |= sq;
         
         this->zobrist_hash ^= zobrists.piece_square[piece][square];
+        if (piece == Piece::kWhitePawn || piece == Piece::kBlackPawn)
+            this->pawn_zobrist_hash ^= zobrists.piece_square[piece][square];
     }
 
     void Board::MovePiece(uint64_t from, uint64_t to) {
@@ -405,8 +426,10 @@ namespace lightknight {
         undo.fullmoves = this->fullmoves;
 
         // Modify stuff not related to moving pieces.
-        if (this->en_passant != 0)
+        if (this->en_passant != 0) {
             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+            this->pawn_zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+        }
         this->en_passant = 0ull;
         
         this->halfmoves++;
@@ -441,6 +464,7 @@ namespace lightknight {
                         if (ep_takers) {
                             this->en_passant = ep_bb;
                             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+                            this->pawn_zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
                         }
                     }
                     else if (turn == lightknight::Color::kBlack && to == (from >> 16)) {
@@ -451,6 +475,7 @@ namespace lightknight {
                         if (ep_takers) {
                             this->en_passant = ep_bb;
                             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+                            this->pawn_zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
                         }
                     }
                 }
@@ -575,10 +600,14 @@ namespace lightknight {
         this->zobrist_hash ^= zobrists.castling[undo.castling];
         this->castling = undo.castling;
         
-        if (this->en_passant != 0)
+        if (this->en_passant != 0) {
             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
-        if (undo.en_passant != 0)
+            this->pawn_zobrist_hash ^= zobrists.en_passant[BitboardToSquare(this->en_passant)];
+        }
+        if (undo.en_passant != 0) {
             this->zobrist_hash ^= zobrists.en_passant[BitboardToSquare(undo.en_passant)];
+            this->pawn_zobrist_hash ^= zobrists.en_passant[BitboardToSquare(undo.en_passant)];
+        }
         this->en_passant = undo.en_passant;
         
         this->halfmoves = undo.halfmoves;

@@ -5,6 +5,8 @@
 #include "board.h"
 #include "movegen.h"
 #include "types.h"
+#include "pawn_hash.h"
+
 
 namespace lightknight::eval {
     int ComputeGamePhase(const Board& board) {
@@ -35,19 +37,19 @@ namespace lightknight::eval {
         uint64_t attack_bb;
         
         if constexpr (piece_type == Piece::kWhiteKnight || piece_type == Piece::kBlackKnight) {
-            attack_bb = movegen::kKnightAttacks[piece_sq];
+            attack_bb = kKnightAttacksBB[piece_sq];
         }
         else if constexpr (piece_type == Piece::kWhiteBishop || piece_type == Piece::kBlackBishop) {
             uint64_t blockers = board.color_bitboards[Color::kWhite] | board.color_bitboards[Color::kBlack];
-            attack_bb = movegen::BishopAttackBitboard(piece_sq, blockers);
+            attack_bb = BishopAttackBB(piece_sq, blockers);
         }
         else if constexpr (piece_type == Piece::kWhiteRook || piece_type == Piece::kBlackRook) {
             uint64_t blockers = board.color_bitboards[Color::kWhite] | board.color_bitboards[Color::kBlack];
-            attack_bb = movegen::RookAttackBitboard(piece_sq, blockers);
+            attack_bb = RookAttackBB(piece_sq, blockers);
         }
         else if constexpr (piece_type == Piece::kWhiteQueen || piece_type == Piece::kBlackQueen) {
             uint64_t blockers = board.color_bitboards[Color::kWhite] | board.color_bitboards[Color::kBlack];
-            attack_bb = movegen::QueenAttackBitboard(piece_sq, blockers);
+            attack_bb = QueenAttackBB(piece_sq, blockers);
         }
         
         attack_bb &= ~friendly_bb;
@@ -63,65 +65,56 @@ namespace lightknight::eval {
     template int GetPieceMobility<Piece::kWhiteQueen>(const Board&, Square);
     template int GetPieceMobility<Piece::kBlackQueen>(const Board&, Square);
 
-    uint64_t PassedPawnsBB(const Board& board, Color color) { 
-        uint64_t my_pawns_bb = (color == Color::kWhite) ? board.piece_bitboards[Piece::kWhitePawn] : board.piece_bitboards[Piece::kBlackPawn];
-        uint64_t enemy_pawns_bb = (color == Color::kWhite) ? board.piece_bitboards[Piece::kBlackPawn] : board.piece_bitboards[Piece::kWhitePawn];
-        uint64_t passed_pawns_bb = 0ull;
+    PawnHashEntry ComputePawnHashEntry(const Board& board) {
+        PawnHashEntry pawn_hash_entry{};
 
-        for (uint64_t bb = my_pawns_bb; bb; bb &= ~LSB(bb)) {
-            uint64_t pawn_bb = LSB(bb);
-            uint64_t test_bb = ForwardThreeFillBB(pawn_bb, color);
+        // Build the bitboards
+        for (Color color : {Color::kWhite, Color::kBlack}) {
+            uint64_t my_pawns_bb = (color == Color::kWhite) ? board.piece_bitboards[Piece::kWhitePawn] : board.piece_bitboards[Piece::kBlackPawn];
+            uint64_t enemy_pawns_bb = (color == Color::kWhite) ? board.piece_bitboards[Piece::kBlackPawn] : board.piece_bitboards[Piece::kWhitePawn];
+        
+            // ---- Passed pawns. ----
+            uint64_t passed_pawns_bb = 0ull;
+            for (uint64_t bb = my_pawns_bb; bb; bb &= ~LSB(bb)) {
+                uint64_t pawn_bb = LSB(bb);
+                uint64_t test_bb = ForwardThreeFillBB(pawn_bb, color);
 
-            if (!(enemy_pawns_bb & test_bb))
-                passed_pawns_bb |= pawn_bb;
+                if (!(enemy_pawns_bb & test_bb))
+                    passed_pawns_bb |= pawn_bb;
+            }
+
+            uint64_t ep_pawn = passed_pawns_bb & Forward(board.en_passant, color);
+            if (ep_pawn) {
+                uint64_t potential_takers = West(ep_pawn) | East(ep_pawn);
+
+                if (potential_takers & enemy_pawns_bb)
+                    passed_pawns_bb &= ~ep_pawn;
+            }
+            pawn_hash_entry.passed_pawns_bb[color] = passed_pawns_bb;
+        
+            // ---- Isolated pawns. ----
+            uint64_t isolated_pawns_bb = 0ull;
+            for (uint64_t bb = my_pawns_bb; bb; bb &= ~LSB(bb)) {
+                uint64_t pawn_bb = LSB(bb);
+                uint64_t adjacent_file_bb = FileBB(East(pawn_bb)) | FileBB(West(pawn_bb));
+
+                if (!(my_pawns_bb & adjacent_file_bb))
+                    isolated_pawns_bb |= pawn_bb;
+            }
+            pawn_hash_entry.isolated_pawns_bb[color] = isolated_pawns_bb;
+
+            // ---- Protected pawns. ----
+            pawn_hash_entry.protected_pawns_bb[color] = my_pawns_bb & (East(Forward(my_pawns_bb, color)) | West(Forward(my_pawns_bb, color)));
+        
+            // ---- Connectes pawns. ----        
+            pawn_hash_entry.connected_pawns_bb[color] = my_pawns_bb &
+                (East(my_pawns_bb) | West(my_pawns_bb) |
+                NorthEast(my_pawns_bb) | NorthWest(my_pawns_bb) |
+                SouthEast(my_pawns_bb) | SouthWest(my_pawns_bb));
         }
-
-        // If a pawn can be taken en passant its not a passed pawn.
-        uint64_t ep_pawn = passed_pawns_bb & Forward(board.en_passant, color);
-        if (ep_pawn) {
-            uint64_t potential_takers = West(ep_pawn) | East(ep_pawn);
-
-            if (potential_takers & enemy_pawns_bb)
-                passed_pawns_bb &= ~ep_pawn;
-        } 
-
-        return passed_pawns_bb;
-    }
-
-    uint64_t IsolatedPawnsBB(const Board& board, Color color) {
-        uint64_t my_pawns_bb = color ? board.piece_bitboards[Piece::kBlackPawn] : board.piece_bitboards[Piece::kWhitePawn];
-        uint64_t isolated_pawns_bb = 0ull;
-
-        for (uint64_t bb = my_pawns_bb; bb; bb &= ~LSB(bb)) {
-            uint64_t pawn_bb = LSB(bb);
-            uint64_t adjacent_file_bb = FileBB(East(pawn_bb)) | FileBB(West(pawn_bb));
-
-            if (!(my_pawns_bb & adjacent_file_bb))
-                isolated_pawns_bb |= pawn_bb;
-        }
-
-        return isolated_pawns_bb;
-    }
-
-    uint64_t ProtectedPawnsBB(const Board& board, Color color) {
-        const uint64_t pawns_bb = (color == Color::kWhite)
-            ? board.piece_bitboards[kWhitePawn] 
-            : board.piece_bitboards[kBlackPawn];
-
-        return pawns_bb & (East(Forward(pawns_bb, color)) | West(Forward(pawns_bb, color)));
-    }
-
-    uint64_t ConnectedPawnsBB(const Board& board, Color color) {
-        const uint64_t pawns_bb = (color == Color::kWhite)
-            ? board.piece_bitboards[kWhitePawn]
-            : board.piece_bitboards[kBlackPawn];
-
-        return pawns_bb &
-            (East(pawns_bb) | West(pawns_bb) |
-            NorthEast(pawns_bb) | NorthWest(pawns_bb) |
-            SouthEast(pawns_bb) | SouthWest(pawns_bb));
-    }
-
+        
+        return pawn_hash_entry;
+    } 
 
     int EvaluateMaterial_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
         int eval = 0;
@@ -208,31 +201,28 @@ namespace lightknight::eval {
         return evaluation; 
     }
 
-    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
+    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params, PawnHashEntry& pawn_hash_entry) {
+        if (pawn_hash_entry.valid)
+            return pawn_hash_entry.pawn_eval[game_phase];
+        
         int evaluation = 0;
 
-        // Passed pawn bonus        
-        const uint64_t white_passed_pawns_bb = PassedPawnsBB(board, Color::kWhite);  
-        const uint64_t black_passed_pawns_bb = PassedPawnsBB(board, Color::kBlack);
-
-        for (uint64_t bb = white_passed_pawns_bb; bb; bb &= ~LSB(bb)) {
+        // Passed pawn bonus
+        for (uint64_t bb = pawn_hash_entry.passed_pawns_bb[Color::kWhite]; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
             evaluation += params.eval.passed_pawns[game_phase][pawn_sq];
         }
-        for (uint64_t bb = black_passed_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.passed_pawns_bb[Color::kBlack]; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
             evaluation -= params.eval.passed_pawns[game_phase][MirrorVertically(pawn_sq)];
         }
 
         // Isolated pawn penalty
-        const uint64_t white_isolated_pawns_bb = IsolatedPawnsBB(board, Color::kWhite);
-        const uint64_t black_isolated_pawns_bb = IsolatedPawnsBB(board, Color::kBlack);
-    
-        for (uint64_t bb = white_isolated_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.isolated_pawns_bb[Color::kWhite]; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
             evaluation += params.eval.isolated_pawns[game_phase][pawn_sq];
         }
-        for (uint64_t bb = black_isolated_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.isolated_pawns_bb[Color::kBlack]; bb; bb &= ~LSB(bb)) {
             const Square pawn_sq = LSBSquare(bb);
             evaluation -= params.eval.isolated_pawns[game_phase][MirrorVertically(pawn_sq)];
         }
@@ -255,31 +245,26 @@ namespace lightknight::eval {
         }
 
         // Connected pawns bonus.
-        uint64_t white_connected_pawns_bb = ConnectedPawnsBB(board, Color::kWhite);
-        uint64_t black_connected_pawns_bb = ConnectedPawnsBB(board, Color::kBlack);
-
-        for (uint64_t bb = white_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.connected_pawns_bb[Color::kWhite]; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
             evaluation += params.eval.connected_pawns[game_phase][pawn_rank];
         }
-        for (uint64_t bb = black_connected_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.connected_pawns_bb[Color::kBlack]; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
             evaluation -= params.eval.connected_pawns[game_phase][pawn_rank];
         }
 
         // Protected pawns bonus.
-        uint64_t white_protected_pawns_bb = ProtectedPawnsBB(board, Color::kWhite);
-        uint64_t black_protected_pawns_bb = ProtectedPawnsBB(board, Color::kBlack);
-
-        for (uint64_t bb = white_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.protected_pawns_bb[Color::kWhite]; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = Rank(BitboardToSquare(LSB(bb)));
             evaluation += params.eval.protected_pawns[game_phase][pawn_rank];
         }
-        for (uint64_t bb = black_protected_pawns_bb; bb; bb &= ~LSB(bb)) {
+        for (uint64_t bb = pawn_hash_entry.protected_pawns_bb[Color::kBlack]; bb; bb &= ~LSB(bb)) {
             const int pawn_rank = 7 - Rank(BitboardToSquare(LSB(bb)));
             evaluation -= params.eval.protected_pawns[game_phase][pawn_rank];
         }
 
+        pawn_hash_entry.pawn_eval[game_phase] = evaluation;
         return evaluation;
     }
 
@@ -349,12 +334,23 @@ namespace lightknight::eval {
         );
     };
 
-    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
-        return ComputeWeightedEval(
+    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params, PawnHash& pawn_hash) {
+        bool is_miss = !pawn_hash.Probe(board.pawn_zobrist_hash);
+        PawnHashEntry& pawn_hash_entry = pawn_hash[board.pawn_zobrist_hash];
+        
+        if (is_miss)
+            pawn_hash_entry = ComputePawnHashEntry(board);
+
+        int eval = ComputeWeightedEval(
             phase_weight,
-            EvaluatePawns_(board, GamePhase::kMG, params),
-            EvaluatePawns_(board, GamePhase::kEG, params)
+            EvaluatePawns_(board, GamePhase::kMG, params, pawn_hash_entry),
+            EvaluatePawns_(board, GamePhase::kEG, params, pawn_hash_entry)
         );
+
+        if (is_miss)
+            pawn_hash.Store(board.pawn_zobrist_hash, pawn_hash_entry);
+        
+        return eval;
     }
 
     int EvaluateKings(const Board& board, int phase_weight, const parameters::EngineParameters& params) {
@@ -365,14 +361,15 @@ namespace lightknight::eval {
         );
     }
 
-
-    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params) {
+    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params, PawnHash& pawn_hash) {
+        PawnHashEntry& pawn_hash_entry = pawn_hash[board.pawn_zobrist_hash];
+        
         const int white_relative_score = 
             EvaluateMaterial_(board, game_phase, params) + 
             EvaluatePieceSquare_(board, game_phase, params) +
             EvaluateMobility_(board, game_phase, params) +
             EvaluateSmallBonuses_(board, game_phase, params) +
-            EvaluatePawns_(board, game_phase, params) +
+            EvaluatePawns_(board, game_phase, params, pawn_hash_entry) +
             EvaluateKings_(board, game_phase, params);
         
         return board.turn == Color::kWhite
@@ -380,14 +377,14 @@ namespace lightknight::eval {
             : -white_relative_score;
     }
 
-    int Evaluate(const Board& board, const parameters::EngineParameters& params) {
+    int Evaluate(const Board& board, const parameters::EngineParameters& params, PawnHash& pawn_hash) {
         const int phase_weight = ComputeGamePhase(board);
         const int white_relative_score = 
             EvaluateMaterial(board, phase_weight, params) + 
             EvaluatePieceSquare(board, phase_weight, params) +
             EvaluateMobility(board, phase_weight, params) +
             EvaluateSmallBonuses(board, phase_weight, params) +
-            EvaluatePawns(board, phase_weight, params) +
+            EvaluatePawns(board, phase_weight, params, pawn_hash) +
             EvaluateKings(board, phase_weight, params);
 
         return board.turn == Color::kWhite

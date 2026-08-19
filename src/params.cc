@@ -301,6 +301,7 @@ namespace lightknight::parameters {
 
     EngineParameters::EngineParameters() :
         tt_size_mb {kDefaultHashSizeMB},
+        pawn_hash_size_kb {kDefaultPawnHashSizeKB},
         n_killer_moves {kDefaultNKillerMoves} {};
     
     // There must be a better way than to place here information about tuning 

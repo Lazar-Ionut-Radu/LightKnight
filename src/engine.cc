@@ -15,7 +15,8 @@ namespace lightknight {
 
     Engine::Engine() 
         : params(),
-          tt(parameters::kDefaultHashSizeMB)
+          tt(parameters::kDefaultHashSizeMB),
+          pawn_hash(parameters::kDefaultPawnHashSizeKB)
     {
         this->board.FromFEN(kStartFen);
 
@@ -51,6 +52,7 @@ namespace lightknight {
         this->StopSearch();
 
         this->tt.Clear();
+        this->pawn_hash.Clear();
         this->board.FromFEN(kStartFen);
     }
 
@@ -99,7 +101,7 @@ namespace lightknight {
             ]() mutable {
                 // Search
                 search::SearchStats stats{};
-                search::IterativeDeepening(board, max_depth, params, tt, time_control_struct, stats, print_search_info_fn);
+                search::IterativeDeepening(board, max_depth, params, tt, pawn_hash, time_control_struct, stats, print_search_info_fn);
 
                 // Get the best move
                 search::TTEntry* tt_entry = this->tt.Probe(board.zobrist_hash);

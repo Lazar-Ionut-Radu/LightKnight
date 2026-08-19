@@ -5,8 +5,13 @@
 #include "board.h"
 #include "types.h"
 #include "params.h"
+#include "pawn_hash.h"
 
 namespace lightknight::eval {
+    static int num_evals = 0;
+    static int num_misses = 0;
+    static int hits = 0;
+    
     inline constexpr size_t kNumGamePhases = 2;
     enum GamePhase : uint8_t {
         kMG,
@@ -41,14 +46,14 @@ namespace lightknight::eval {
     int EvaluatePieceSquare(const Board& board, int phase_weight, const parameters::EngineParameters& params);
     int EvaluateMobility_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
     int EvaluateMobility(const Board& board, int phase_weight, const parameters::EngineParameters& params);
-    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
-    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params);
+    int EvaluatePawns_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params, PawnHashEntry& pawn_hash_entry);
+    int EvaluatePawns(const Board& board, int phase_weight, const parameters::EngineParameters& params, PawnHash& pawn_hash);
     int EvaluateKings_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
     int EvaluateKings(const Board& board, int phase_weight, const parameters::EngineParameters& params);
 
     // From the perspective of the player whose turn it is.
-    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params);
-    int Evaluate(const Board& board, const parameters::EngineParameters& params);
+    int Evaluate_(const Board& board, GamePhase game_phase, const parameters::EngineParameters& params, PawnHash& pawn_hash);
+    int Evaluate(const Board& board, const parameters::EngineParameters& params, PawnHash& pawn_hash);
 } // namespace lightknight::eval
 
 #endif // LIGHTKNIGHT_EVAL_H

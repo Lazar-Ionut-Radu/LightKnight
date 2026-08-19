@@ -2,6 +2,16 @@
 
 All notable changes to LightKnight are documented in this file.
 
+## Unreleased
+
+### Added
+- Pawn Hashtable to score pawn evaluations. 
+- Zobrist hash only for pawns + en passant.
+
+### Changed
+- Forward Fill bitboards used for pawn evaluation are computed now at compile time.
+- Attack bitboards of pieces, along with magic bitboards code is now placed in types.h, where the other bitboard related functions are placed.
+
 ## [0.4.2]
 
 ### Fixed

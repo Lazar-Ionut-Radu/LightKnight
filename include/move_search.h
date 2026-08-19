@@ -9,6 +9,7 @@
 #include "types.h"
 #include "board.h"
 #include "transposition_table.h"
+#include "pawn_hash.h"
 #include "params.h"
 
 namespace lightknight::search {
@@ -113,6 +114,7 @@ namespace lightknight::search {
         int max_depth,
         const parameters::EngineParameters& params,
         TranspositionTable& tt,
+        eval::PawnHash& pawn_hash, // Memoization of pawn related info.
         TimeControlStruct& time_control,
         SearchStats& search_stats,
         const SearchInfoCallback& info_callback // Prints search info with UCI.
@@ -129,6 +131,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
+        eval::PawnHash& pawn_hash, // Memoization of pawn related info.
         History& history, // History heuristic
         Killers& killers, // Killer heuristic
         TimeControlStruct& time_control,
@@ -145,6 +148,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         const parameters::EngineParameters& params,
         TranspositionTable& tt,
+        eval::PawnHash& pawn_hash, // Memoization of pawn related info.
         TimeControlStruct& time_control,
         SearchStats& stats
     );

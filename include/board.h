@@ -25,7 +25,13 @@ namespace lightknight {
         // black's move.
         int fullmoves;
 
+        // Hoshes for TT and Pawn Hash.
         uint64_t zobrist_hash = 0ULL;
+        uint64_t pawn_zobrist_hash = 0ULL;
+        
+        // Pinned pieces bb.
+        std::array<uint64_t, kNumColors> pins_diagonal_bitboard;
+        std::array<uint64_t, kNumColors> pins_straight_bitboard;
 
         // History of positions (their hashes) for finding repetitions inside the search function.
         std::vector<uint64_t> hashes_history;
@@ -49,7 +55,9 @@ namespace lightknight {
         );
 
         uint64_t ComputeZobristHash() const;
-        void XorEnPassantHash(uint64_t ep);
+        uint64_t ComputePawnZobristHash() const;
+        
+        void ComputePinBitboards();
 
         bool IsSquareAttacked(uint64_t square_bb, Color my_color) const;
         bool IsInCheck(Color color) const;

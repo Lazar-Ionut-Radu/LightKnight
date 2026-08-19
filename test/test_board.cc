@@ -65,6 +65,7 @@ void CheckBoard(const lightknight::Board& actual, const lightknight::Board& expe
     CHECK(actual.halfmoves == expected.halfmoves);
     CHECK(actual.fullmoves == expected.fullmoves);
     CHECK(actual.zobrist_hash == expected.zobrist_hash);
+    CHECK(actual.pawn_zobrist_hash == expected.pawn_zobrist_hash);
 }
 
 TEST_CASE(

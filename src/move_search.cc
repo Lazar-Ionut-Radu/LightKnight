@@ -116,7 +116,8 @@ namespace lightknight::search {
         Board& board,
         int max_depth,
         const parameters::EngineParameters& params,
-        TranspositionTable& tt, 
+        TranspositionTable& tt,
+        eval::PawnHash& pawn_hash,
         TimeControlStruct& time_control,
         SearchStats& stats,
         const SearchInfoCallback& info_callback // Prints search info with UCI.
@@ -151,7 +152,7 @@ namespace lightknight::search {
         for (int to_depth = 1; to_depth <= target_max_depth; ++to_depth) {
             stats.selective_depth = 0;
 
-            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, params, tt, history, killers, time_control, stats);
+            const int score = PrincipalVariationSearch<search::SearchNodeType::kPVNode>(board, -kInfinity, kInfinity, to_depth, 0, move_lists, score_lists, params, tt, pawn_hash, history, killers, time_control, stats);
     
             if (time_control.stopped)
                 break;
@@ -187,6 +188,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         const parameters::EngineParameters& params,
         TranspositionTable& tt, // Memoization of positions.
+        eval::PawnHash& pawn_hash, // Memoization of pawn related info.
         History& history, // History heuristic
         Killers& killers, // Killer heuristics
         TimeControlStruct& time_control,
@@ -214,7 +216,7 @@ namespace lightknight::search {
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
-            return eval::Evaluate(board, params);
+            return eval::Evaluate(board, params, pawn_hash);
         }
 
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
@@ -259,7 +261,7 @@ namespace lightknight::search {
         // Basecase:
         // Reaching the max depth of this search.
         if (depth >= max_depth) {
-            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, params, tt, time_control, stats);
+            return QuiescenceSearch<node_type>(board, alpha, beta, depth, move_lists, score_lists, params, tt, pawn_hash, time_control, stats);
         }
 
         // Generate moves.
@@ -314,17 +316,17 @@ namespace lightknight::search {
             board.MakeMove(move, undo);
             if (first_move) {
                 // Full search
-                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
+                score = -PrincipalVariationSearch<node_type>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, pawn_hash, history, killers, time_control, stats);
                 first_move = false;
             } else {
                 // Zero-window search.
-                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
+                score = -PrincipalVariationSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, pawn_hash, history, killers, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, history, killers, time_control, stats);
+                    score = -PrincipalVariationSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, max_depth, depth + 1, move_lists, score_lists, params, tt, pawn_hash, history, killers, time_control, stats);
             }
             board.UnmakeMove(move, undo);
             
@@ -403,6 +405,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>& score_lists, // Preallocated vectors for move scores.
         const parameters::EngineParameters& params,
         TranspositionTable& tt,
+        eval::PawnHash& pawn_hash, // Memoization of pawn related info.
         TimeControlStruct& time_control,
         SearchStats& stats
     ) {
@@ -436,7 +439,7 @@ namespace lightknight::search {
         // If we have reached the hard limit on depth that can be searched (unlikely) return
         // immediately with a provisional evaluation
         if (depth >= search::kMaxDepth || depth >= move_lists.size()) {
-            return eval::Evaluate(board, params);
+            return eval::Evaluate(board, params, pawn_hash);
         }
 
         // Save for telling fail-low nodes (all nodes) from pv nodes later.
@@ -506,7 +509,7 @@ namespace lightknight::search {
             }
 
             // Basecase: Quiet position.
-            const int score = eval::Evaluate(board, params);
+            const int score = eval::Evaluate(board, params, pawn_hash);
 
             tt.Store(zobrist_hash, score, 0, Move{}, TTBound::Exact);
             return score;
@@ -523,7 +526,7 @@ namespace lightknight::search {
         // Standing pat
         // Allow the search to stop if subsequent captures lead to worse positions.
         if (!in_check) {
-            const int stand_pat = eval::Evaluate(board, params);
+            const int stand_pat = eval::Evaluate(board, params, pawn_hash);
             best_score = stand_pat;
 
             // Return if doing nothing (no capture I mean) is better.
@@ -567,17 +570,17 @@ namespace lightknight::search {
             board.MakeMove(move, undo);
             if (first_move) {
                 // Full search
-                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
+                score = -QuiescenceSearch<node_type>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, pawn_hash, time_control, stats);
                 first_move = false;
             } else {
                 // Zero-window search.
-                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
+                score = -QuiescenceSearch<SearchNodeType::kNonPVNode>(board, -alpha - 1, -alpha, depth + 1, move_lists, score_lists, params, tt, pawn_hash, time_control, stats);
                 
                 // If the move was proven to give an improvement, re-search it will a full window.
                 // The node time constraint makes sure that we don't re-evaluate nodes that already
                 // have a null-window (that can be further down a subtree)
                 if (score > alpha && node_type == SearchNodeType::kPVNode)
-                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, time_control, stats);
+                    score = -QuiescenceSearch<SearchNodeType::kPVNode>(board, -beta, -alpha, depth + 1, move_lists, score_lists, params, tt, pawn_hash, time_control, stats);
             }
             board.UnmakeMove(move, undo);
 
@@ -649,6 +652,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>&,
         const parameters::EngineParameters&,
         TranspositionTable&,
+        eval::PawnHash&,
         History&,
         Killers&,
         TimeControlStruct&,
@@ -665,6 +669,7 @@ namespace lightknight::search {
         std::vector<std::vector<int>>&,
         const parameters::EngineParameters&,
         TranspositionTable&,
+        eval::PawnHash&,
         History&,
         Killers&,
         TimeControlStruct&,
