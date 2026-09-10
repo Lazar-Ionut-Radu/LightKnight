@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "movegen.h"
+#include "move_gen.h"
 #include "params.h"
 
 namespace lightknight {

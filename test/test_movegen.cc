@@ -1,6 +1,6 @@
 // test/test_movegen.cc
 #include <catch2/catch_test_macros.hpp>
-#include "movegen.h"
+#include "move_gen.h"
 #include "types.h"
 #include "board.h"
 #include <vector>

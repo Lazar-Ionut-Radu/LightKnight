@@ -11,7 +11,7 @@
 #include "board.h"
 #include "types.h"
 #include "eval.h"
-#include "movegen.h"
+#include "move_gen.h"
 #include "transposition_table.h"
 #include "move_order.h"
 

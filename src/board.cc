@@ -1,7 +1,7 @@
 // board.cc
 #include "board.h"
 #include "exceptions.h"
-#include "movegen.h"
+#include "move_gen.h"
 #include "zobrist.h"
 
 #include <array>

@@ -1,7 +1,7 @@
 // perft.cc
 #include "perft.h"
 #include "board.h"
-#include "movegen.h"
+#include "move_gen.h"
 
 #include <cassert>
 #include <cstddef>

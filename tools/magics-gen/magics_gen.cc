@@ -1,6 +1,6 @@
 // helpers/magics_gen/magics_gen.cc
 #include "magics_gen.h"
-#include "movegen.h"
+#include "move_gen.h"
 #include <iostream>
 #include <cstdint>
 #include <random>

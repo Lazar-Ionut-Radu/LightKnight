@@ -2,7 +2,7 @@
 #include "uci.h"
 #include "board.h"
 #include "exceptions.h"
-#include "movegen.h"
+#include "move_gen.h"
 #include "move_search.h"
 #include "time_management.h"
 

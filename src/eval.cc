@@ -3,7 +3,7 @@
 
 #include <cstddef>
 #include "board.h"
-#include "movegen.h"
+#include "move_gen.h"
 #include "types.h"
 #include "pawn_hash.h"
 
