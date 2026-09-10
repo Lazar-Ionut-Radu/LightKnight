@@ -8,10 +8,6 @@
 #include "pawn_hash.h"
 
 namespace lightknight::eval {
-    static int num_evals = 0;
-    static int num_misses = 0;
-    static int hits = 0;
-    
     inline constexpr size_t kNumGamePhases = 2;
     enum GamePhase : uint8_t {
         kMG,
