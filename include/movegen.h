@@ -8,6 +8,11 @@
 #include <cstdint>
 #include <cstddef>
 
+
+// Followed the following blog post when implementing legal move generation.
+// https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/
+
+
 namespace lightknight::movegen {   
     // For generating and making/unmaking castling moves.
     struct CastleInfo {
