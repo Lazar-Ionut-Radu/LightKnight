@@ -8,6 +8,11 @@
 #include "types.h"
 
 namespace lightknight {
+    struct PinInfo {
+        uint64_t pinned_bb;
+        uint64_t pinners_bb;
+    };
+
     class Board {
     public:
         // Array of bitboards, one for each piece type, specifying their positions on the table.
@@ -57,12 +62,16 @@ namespace lightknight {
         uint64_t ComputeZobristHash() const;
         uint64_t ComputePawnZobristHash() const;
         
-        void ComputePinBitboards();
-
+        uint64_t DefendedBB(Color color, uint64_t blockers) const;
+        uint64_t DefendedBB(Color color) const;
+        uint64_t AttackersBB(uint64_t square_bb, Color my_color) const;
         bool IsSquareAttacked(uint64_t square_bb, Color my_color) const;
+
         bool IsInCheck(Color color) const;
         bool IsCheckMate(std::vector<lightknight::Move> &moves) const;
         bool IsStaleMate(std::vector<lightknight::Move> &moves) const;
+
+        PinInfo GetAbsolutePinsInfo(Color my_color) const;
 
         // Considers the last 'search_ply' positions to be from a search tree rather than played in
         // the game. If the current position occured twice within the search tree or three times
@@ -82,7 +91,7 @@ namespace lightknight {
         bool IsCapture(Move move) const;
         Piece GetCapturedPiece(Move move) const;
         Piece GetMovedPiece(Move move) const;
-    };
+    }; // class Board
 } // namespace lightknight
 
 #endif // LIGHTKNIGHT_BOARD_H
