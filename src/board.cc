@@ -246,33 +246,120 @@ namespace lightknight {
         return hash;
     }
 
+    uint64_t Board::DefendedBB(Color color, uint64_t blockers) const {
+        const uint64_t own_pieces = color_bitboards[color];
+        uint64_t defended = 0ull;
+
+        // Pawns
+        uint64_t pawns_forward = Forward(piece_bitboards[kWhitePawn + 6 * color], color); 
+        uint64_t pawn_def = East(pawns_forward) | West(pawns_forward);
+        defended |= pawn_def;
+
+        // Knights
+        for (uint64_t bb = piece_bitboards[Piece::kWhiteKnight + 6 * color]; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            defended |= kKnightAttacksBB[sq];
+        }
+
+        // Bishops
+        for (uint64_t bb = piece_bitboards[Piece::kWhiteBishop + 6 * color]; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            defended |= BishopAttackBB(sq, blockers);
+        }
+
+        // Rooks
+        for (uint64_t bb = piece_bitboards[Piece::kWhiteRook + 6 * color]; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            defended |= RookAttackBB(sq, blockers);
+        }
+
+        // Queens
+        for (uint64_t bb = piece_bitboards[Piece::kWhiteQueen + 6 * color]; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            defended |= QueenAttackBB(sq, blockers);
+        }
+
+        // King
+        const Square sq = BitboardToSquare(piece_bitboards[Piece::kWhiteKing + 6 * color]);
+        defended |= kKingAttacksBB[sq];
+
+        return defended;
+    }
+
+    // Returns a bitboard of squares that are defended by pieces of the given color.
+    // En passant not considered.
+    uint64_t Board::DefendedBB(Color color) const {
+        return DefendedBB(color, color_bitboards[Color::kWhite] | color_bitboards[Color::kBlack]);
+    }
+
+    // Returns a bitboard of pieces that attack this square.
+    // Does not consider en passant.
+    uint64_t Board::AttackersBB(uint64_t square_bb, Color my_color) const {
+        Color attacker_color = OppositeColor(my_color);
+        Square sq = BitboardToSquare(square_bb);
+
+        uint64_t attackers = 0ull;
+
+        // Compute blockers.
+        uint64_t blockers = this->color_bitboards[0] | this->color_bitboards[1];
+    
+        // Attacks on straights.
+        uint64_t straights = RookAttackBB(sq, blockers);
+        attackers |= straights & (this->piece_bitboards[Piece::kWhiteRook + 6 * attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6 * attacker_color]);
+    
+        // Attacks on diagonals.
+        uint64_t diagonals = BishopAttackBB(sq, blockers);
+        attackers |= diagonals & (this->piece_bitboards[Piece::kWhiteBishop + 6 * attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6 * attacker_color]);
+    
+        // Knight attacks.
+        uint64_t knight_attacks = kKnightAttacksBB[sq];
+        attackers |= knight_attacks & this->piece_bitboards[Piece::kWhiteKnight + 6 * attacker_color];
+    
+        // Pawn attacks.
+        uint64_t pawn_attacks = PawnAttackBB(sq, my_color);
+        attackers |= pawn_attacks & this->piece_bitboards[Piece::kWhitePawn + 6 * attacker_color];
+
+        // King attacks.
+        attackers |= kKingAttacksBB[sq] & this->piece_bitboards[Piece::kWhiteKing + 6 * attacker_color];
+
+        return attackers;
+    }
+
     // Checks if this square is attacked by a piece of the specified color.
+    // Does not consider en passant.
     bool Board::IsSquareAttacked(uint64_t square_bb, Color my_color) const {
         Color attacker_color = (Color)(1 - my_color);
         Square sq = BitboardToSquare(square_bb);
 
-        // Compute diagonal and straight attacks from the king's POV to find possible attackers.
+        // Compute blockers.
         uint64_t blockers = this->color_bitboards[0] | this->color_bitboards[1];
+       
+        // Attacks on straights.
         uint64_t straights = RookAttackBB(sq, blockers);
-        uint64_t diagonals = BishopAttackBB(sq, blockers);
-
-        bool check_on_diagonals = diagonals &
-            (this->piece_bitboards[Piece::kWhiteBishop + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]);
-        bool check_on_straights = straights &
-            (this->piece_bitboards[Piece::kWhiteRook + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]);
-    
-        // Compute knight attacks from the king's POV to find checks
-        uint64_t knights_attacks = kKnightAttacksBB[sq];
-        bool check_by_knight = knights_attacks & this->piece_bitboards[Piece::kWhiteKnight + 6*attacker_color];
-
-        // Compute pawn attacks from the king's POV to find checks
-        uint64_t pawn_attacks = PawnAttackBB(sq, my_color);
-        bool check_by_pawn = pawn_attacks & this->piece_bitboards[Piece::kWhitePawn + 6*attacker_color];
-
-        // Verdict.
-        if (check_on_diagonals || check_on_straights || check_by_knight || check_by_pawn) {
+        if (straights & (this->piece_bitboards[Piece::kWhiteRook + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]))
             return true;
-        }
+        
+        // Attacks on diagonals.
+        uint64_t diagonals = BishopAttackBB(sq, blockers);
+        if (diagonals & (this->piece_bitboards[Piece::kWhiteBishop + 6*attacker_color] | this->piece_bitboards[Piece::kWhiteQueen + 6*attacker_color]))
+            return true;
+        
+        // Knight attacks.
+        uint64_t knights_attacks = kKnightAttacksBB[sq];
+        if (knights_attacks & this->piece_bitboards[Piece::kWhiteKnight + 6*attacker_color])
+            return true;
+
+        // Pawn attacks.
+        uint64_t pawn_attacks = PawnAttackBB(sq, my_color);
+        if ( pawn_attacks & this->piece_bitboards[Piece::kWhitePawn + 6*attacker_color])
+            return true;
+
+        // King attacks.
+        uint64_t king_attacks = kKingAttacksBB[sq];
+        if (king_attacks & this->piece_bitboards[Piece::kWhiteKing + 6 * attacker_color])
+            return true;
+
+        // We're safe.
         return false;
     }
 
@@ -318,6 +405,50 @@ namespace lightknight {
         }
 
         return false;
+    }
+
+    PinInfo Board::GetAbsolutePinsInfo(Color my_color) const {
+        PinInfo pin_info{};
+        
+        const Square king_sq = BitboardToSquare(piece_bitboards[Piece::kWhiteKing + 6*my_color]);
+        const uint64_t all_blockers_bb = color_bitboards[Color::kWhite] | color_bitboards[Color::kBlack];
+        const Color enemy_color = OppositeColor(my_color);
+
+        // --- Find pins and pinners for straights. ---
+        // Candidate pinned pieces
+        uint64_t pinned_straight_bb = RookAttackBB(king_sq, all_blockers_bb) & color_bitboards[my_color];
+        // Pinners.
+        uint64_t pinners_straight_bb = RookAttackBB(king_sq, all_blockers_bb & ~pinned_straight_bb) 
+            & (piece_bitboards[kWhiteRook + 6*enemy_color] | piece_bitboards[kWhiteQueen + 6*enemy_color]);
+
+        // Add the pinners.
+        pin_info.pinners_bb |= pinners_straight_bb;
+
+        // Filter out candidate pinned pieces that are not actually pinned.
+        // For each pinner, get the ray it and the king and check a pinned piece is there.
+        for (uint64_t pinners_bb = pinners_straight_bb; pinners_bb != 0ull; pinners_bb &= ~LSB(pinners_bb)) {
+            const Square pinner_sq = LSBSquare(pinners_bb);
+            pin_info.pinned_bb |= (pinned_straight_bb & kSegmentBB[king_sq][pinner_sq]);
+        }
+
+        // --- Find pins and pinners for diagonals. ---
+        // Candidate pinned pieces
+        uint64_t pinned_diagonal_bb = BishopAttackBB(king_sq, all_blockers_bb) & color_bitboards[my_color];
+        // Pinners.
+        uint64_t pinners_diagonal_bb = BishopAttackBB(king_sq, all_blockers_bb & ~pinned_diagonal_bb) 
+            & (piece_bitboards[kWhiteBishop + 6*enemy_color] | piece_bitboards[kWhiteQueen + 6*enemy_color]);
+
+        // Add the pinners.
+        pin_info.pinners_bb |= pinners_diagonal_bb;
+
+        // Filter out candidate pinned pieces that are not actually pinned.
+        // For each pinner, get the ray it and the king and check a pinned piece is there.
+        for (uint64_t pinners_bb = pinners_diagonal_bb; pinners_bb != 0ull; pinners_bb &= ~LSB(pinners_bb)) {
+            const Square pinner_sq = LSBSquare(pinners_bb);
+            pin_info.pinned_bb |= (pinned_diagonal_bb & kSegmentBB[king_sq][pinner_sq]);
+        }
+
+        return pin_info;
     }
 
     lightknight::Piece Board::GetPiece(uint64_t square_bb) const {

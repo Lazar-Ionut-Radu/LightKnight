@@ -57,607 +57,701 @@ namespace lightknight::movegen {
 
     enum class MoveGenType {
         kAll,
-        kTactical,  // Moves that change the material balance i.e. captures & promotions.
-        kCapture,
-        kQuiet      // Moves that are not tactical.
+        kTactical,  // captures + promotions
+        kCapture,   // captures, including capture promotions
+        kQuiet      // quiet moves.
     };
 
-    // [TODO]: I'm gonna need to change vector at some point to something faster, for now it's gonna do.
-    // Also, this is gon' be straight legal moves.
+
+    // Stuff precomputed in GenerateMoves for move generation to avoid duplicating work.
+    struct MoveGenInfo {
+        PinInfo pin_info;
+        uint64_t checkers_bb;
+    };
     
-    template<MoveGenType Type>
-    size_t GeneratePawnMoves(Board& board, std::vector<Move>& moves) {
-        // Booleans for type of move generated
-        constexpr bool generate_captures =
-            Type == MoveGenType::kAll ||
-            Type == MoveGenType::kTactical ||
-            Type == MoveGenType::kCapture;
+    MoveGenInfo GetMoveGenInfo(Board& board);
+    
+    template<MoveGenType type>
+    size_t GeneratePawnMoves(Board& board, std::vector<Move>& moves, const MoveGenInfo& precomputed_info) {
+        size_t move_count = 0;
 
-        constexpr bool generate_quiet_promotions =
-            Type == MoveGenType::kAll ||
-            Type == MoveGenType::kTactical;
-
-        constexpr bool generate_quiet_moves =
-            Type == MoveGenType::kAll ||
-            Type == MoveGenType::kQuiet;
-
-        // Useful values.
+        // Helpers
         const Color my_color = board.turn;
-        const Color opposite_color = static_cast<Color>(1 - my_color);
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+        const size_t num_checkers = SetBitsCount(precomputed_info.checkers_bb);
 
-        const uint64_t pawns = board.piece_bitboards[Piece::kWhitePawn + 6 * my_color];
-        const uint64_t empty = board.piece_bitboards[Piece::kEmpty];
-        const uint64_t enemy_pieces = board.color_bitboards[opposite_color];
-        const uint64_t blockers = board.color_bitboards[0] | board.color_bitboards[1];
-        const Square king_sq = BitboardToSquare(board.piece_bitboards[Piece::kWhiteKing + 6 * my_color]);
-        
-        const uint64_t enemy_rooks_queens =
-            board.piece_bitboards[Piece::kWhiteRook + 6 * opposite_color] |
-            board.piece_bitboards[Piece::kWhiteQueen + 6 * opposite_color];
-        const uint64_t enemy_bishops_queens =
-            board.piece_bitboards[Piece::kWhiteBishop + 6 * opposite_color] |
-            board.piece_bitboards[Piece::kWhiteQueen + 6 * opposite_color];
-        
-            const uint64_t enemy_pawns = board.piece_bitboards[Piece::kWhitePawn + 6 * opposite_color];
-        const uint64_t enemy_knights = board.piece_bitboards[Piece::kWhiteKnight + 6 * opposite_color];
+        // Only king evasions are legal when in double check.
+        if (num_checkers >= 2) 
+            return 0;
+
+        // Candidate destination square, in case there's a check to block.
+        uint64_t capture_block_bb = ~0ull;
+        if (num_checkers == 1) {
+            capture_block_bb = 0ull;
             
-        size_t new_moves_count = 0;
+            // Capture the checking piece.
+            if constexpr (type != MoveGenType::kQuiet)
+                capture_block_bb |= precomputed_info.checkers_bb;
 
-        // Helper funcs.
-        const auto leaves_king_in_check =
-            [&](uint64_t origin_bb,
-                uint64_t destination_bb,
-                uint64_t captured_bb = 0ULL) {
-                const uint64_t relevant_blockers = (blockers & ~origin_bb & ~captured_bb) | destination_bb;
-                const uint64_t straight_attacks = RookAttackBB(king_sq, relevant_blockers);
-                const uint64_t diagonal_attacks = BishopAttackBB(king_sq, relevant_blockers);
+            // Block the check.
+            if constexpr (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+                if (precomputed_info.checkers_bb &
+                    ( board.piece_bitboards[kWhiteBishop + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteRook + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteQueen + 6*enemy_color])
+                ) {
+                    capture_block_bb |= kSegmentBB[BitboardToSquare(precomputed_info.checkers_bb)][own_king_sq];
+                }
+            }
+        }
 
-                const bool straight_check = straight_attacks & (enemy_rooks_queens & ~captured_bb);
-                const bool diagonal_check = diagonal_attacks & (enemy_bishops_queens & ~captured_bb);
-                const bool pawn_check = PawnAttackBB(king_sq, my_color) & (enemy_pawns & ~captured_bb);
-                const bool knight_check = kKnightAttacksBB[king_sq] & (enemy_knights & ~captured_bb);
+        // Helpers.
+        const uint64_t empty_bb = board.piece_bitboards[Piece::kEmpty];    
+        const uint64_t pawns = board.piece_bitboards[Piece::kWhitePawn + 6*my_color];
+        const uint64_t non_pinned_pawns = pawns & ~precomputed_info.pin_info.pinned_bb;
+        const uint64_t pinned_pawns = pawns & precomputed_info.pin_info.pinned_bb;
 
-                return straight_check || diagonal_check || pawn_check || knight_check;
-            };
-
-        const auto add_promotions =
-            [&](Square origin, Square destination) {
-                moves.push_back(
-                    Move(
-                        origin,
-                        destination,
-                        PromotionPieceType::kQueen,
-                        MoveType::kPromotion
-                    )
-                );
-                moves.push_back(
-                    Move(
-                        origin,
-                        destination,
-                        PromotionPieceType::kRook,
-                        MoveType::kPromotion
-                    )
-                );
-                moves.push_back(
-                    Move(
-                        origin,
-                        destination,
-                        PromotionPieceType::kBishop,
-                        MoveType::kPromotion
-                    )
-                );
-                moves.push_back(
-                    Move(
-                        origin,
-                        destination,
-                        PromotionPieceType::kKnight,
-                        MoveType::kPromotion
-                    )
-                );
-
-                new_moves_count += 4;
-            };
+        // ----- Quiet Moves -----
+        if (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+            // ----- Double Pushes -----
+            uint64_t double_movers = pawns & kRankPawnDoublePush[my_color];
+            uint64_t double_movers_to = Forward(Forward(double_movers, my_color) & empty_bb, my_color) & empty_bb & capture_block_bb;
+            
+            for (uint64_t bb = double_movers_to; bb; bb &= ~LSB(bb)) {
+                const Square to_sq = LSBSquare(bb);
+                const uint64_t to_bb = SquareToBitboard(to_sq);
+                const uint64_t from_bb = Backward(Backward(to_bb, my_color), my_color);  
+                const Square from_sq = BitboardToSquare(from_bb);
+                
+                // Pinned
+                if (from_bb & precomputed_info.pin_info.pinned_bb) {
+                    const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
+                    if (pin_line_bb & to_bb) {
+                        moves.push_back(Move(from_sq, to_sq));
+                        move_count++;
+                    }
+                } 
+                // Non pinned
+                else {
+                    moves.push_back(Move(from_sq, to_sq));
+                    move_count++;
+                }
+            }
+            
+            // ----- Non Promotion Single Pushes -----
+            uint64_t single_movers_to = Forward(pawns, my_color) & empty_bb & ~kRankPromotion[my_color] & capture_block_bb;
+            
+            for (uint64_t bb = single_movers_to; bb; bb &= ~LSB(bb)) {
+                const Square to_sq = LSBSquare(bb);
+                const uint64_t to_bb = SquareToBitboard(to_sq);
+                const uint64_t from_bb = Backward(to_bb, my_color);  
+                const Square from_sq = BitboardToSquare(from_bb);
+                
+                // Pinned
+                if (from_bb & precomputed_info.pin_info.pinned_bb) {
+                    const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
+                    if (pin_line_bb & to_bb) {
+                        moves.push_back(Move(from_sq, to_sq));
+                        move_count++;
+                    }
+                } 
+                // Non pinned
+                else {
+                    moves.push_back(Move(from_sq, to_sq));
+                    move_count++;
+                }
+            }
+        }
         
-        // Generate captures.
-        if constexpr (generate_captures) {
-            uint64_t remaining_pawns = pawns;
+        // ----- Non-Capture Promotions -----
+        if (type == MoveGenType::kAll || type == MoveGenType::kTactical) {
+            uint64_t dests_bb = Forward(pawns, my_color) & empty_bb & kRankPromotion[my_color] & capture_block_bb;
+            
+            for (uint64_t bb = dests_bb; bb; bb &= ~LSB(bb)) {
+                const Square to_sq = LSBSquare(bb);
+                const uint64_t to_bb = SquareToBitboard(to_sq);
+                const uint64_t from_bb = Backward(to_bb, my_color);  
+                const Square from_sq = BitboardToSquare(from_bb);
+                
+                // Pinned
+                if (from_bb & precomputed_info.pin_info.pinned_bb) {
+                    const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
+                    if (pin_line_bb & to_bb) {
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        move_count += 4;
+                    }
+                }
+                // Non Pinned
+                else {
+                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                    move_count += 4;                
+                }
+            }
+        }
+    
+        // ----- Capture Moves -----
+        if (type != MoveGenType::kQuiet) {        
+            // TODO: 
+            // Here we have a possible improvement: when in check, only pawn captures are of the checking piece.
+            // So at most 2. If not pinned otherwise.
+            
+            // Captures to the east.
+            uint64_t to_east_bb = East(Forward(pawns, my_color)) & board.color_bitboards[enemy_color];
+            to_east_bb &= capture_block_bb;
 
-            // Normal captures.
-            while (remaining_pawns) {
-                const uint64_t pawn_bb = LSB(remaining_pawns);
-                const Square origin_sq = BitboardToSquare(pawn_bb);
+            for (uint64_t bb = to_east_bb; bb; bb &= ~LSB(bb)) {
+                const Square to_sq = LSBSquare(bb);
+                const uint64_t to_bb = SquareToBitboard(to_sq);
+                const uint64_t from_bb = West(Backward(to_bb, my_color));
+                const Square from_sq = BitboardToSquare(from_bb);
 
-                uint64_t captures = PawnAttackBB(origin_sq, my_color) & enemy_pieces;
+                const bool is_promotion = to_bb & kRankPromotion[my_color];
 
-                while (captures) {
-                    const uint64_t destination_bb = LSB(captures);
-                    const Square destination_sq = BitboardToSquare(destination_bb);
-
-                    if (!leaves_king_in_check(pawn_bb, destination_bb, destination_bb)) {
-                        if (destination_bb & kRankPromotion[my_color]
-                        ) {
-                            add_promotions(origin_sq, destination_sq);
-                        } else {
-                            moves.push_back(Move(origin_sq, destination_sq));
-                            ++new_moves_count;
+                // Pinned
+                if (from_bb & precomputed_info.pin_info.pinned_bb) {
+                    const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
+                    if (pin_line_bb & to_bb) {
+                        // Promotion
+                        if (is_promotion) {
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                            move_count += 4;
+                        }
+                        // Non promotion
+                        else {
+                            moves.push_back(Move(from_sq, to_sq));
+                            move_count++;
                         }
                     }
-                    captures &= ~destination_bb;
                 }
-                remaining_pawns &= ~pawn_bb;
+                // Non Pinned
+                else {
+                    // Promotion
+                    if (is_promotion) {
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        move_count += 4;
+                    }
+                    // Non promotion
+                    else {
+                        moves.push_back(Move(from_sq, to_sq));
+                        move_count++;
+                    }
+                }
             }
 
-            // En passants.
+            // Captures to the west.
+            uint64_t to_west_bb = West(Forward(pawns, my_color)) & board.color_bitboards[enemy_color];
+            to_west_bb &= capture_block_bb;
+
+            for (uint64_t bb = to_west_bb; bb; bb &= ~LSB(bb)) {
+                const Square to_sq = LSBSquare(bb);
+                const uint64_t to_bb = SquareToBitboard(to_sq);
+                const uint64_t from_bb = East(Backward(to_bb, my_color));
+                const Square from_sq = BitboardToSquare(from_bb);
+
+                const bool is_promotion = to_bb & kRankPromotion[my_color];
+
+                // Pinned
+                if (from_bb & precomputed_info.pin_info.pinned_bb) {
+                    const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
+                    if (pin_line_bb & to_bb) {
+                        // Promotion
+                        if (is_promotion) {
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                            move_count += 4;
+                        }
+                        // Non promotion
+                        else {
+                            moves.push_back(Move(from_sq, to_sq));
+                            move_count++;
+                        }
+                    }
+                }
+                // Non Pinned
+                else {
+                    // Promotion
+                    if (is_promotion) {
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        move_count += 4;
+                    }
+                    // Non promotion
+                    else {
+                        moves.push_back(Move(from_sq, to_sq));
+                        move_count++;
+                    }
+                }
+            }
+
+            // En passant
             if (board.en_passant) {
-                uint64_t en_passant_takers = pawns & 
-                    (Backward(West(board.en_passant), my_color) | Backward(East(board.en_passant), my_color));
+                uint64_t en_passant_takers = pawns & (Backward(West(board.en_passant), my_color) | Backward(East(board.en_passant), my_color));
 
                 while (en_passant_takers) {
-                    const uint64_t origin_bb = LSB(en_passant_takers);
-                    const uint64_t destination_bb = board.en_passant;
-                    const uint64_t captured_bb = Backward(destination_bb, my_color);
+                    const uint64_t from_bb = LSB(en_passant_takers);
+                    const uint64_t to_bb = board.en_passant;
+                    const uint64_t captured_bb = Backward(to_bb, my_color);
 
-                    if (!leaves_king_in_check(origin_bb, destination_bb, captured_bb)
-                    ) {
-                        moves.push_back(Move(BitboardToSquare(origin_bb), BitboardToSquare(destination_bb), PromotionPieceType::kKnight, MoveType::kEnPassant));
-                        ++new_moves_count;
+                    // We check explicitly if making the move leaves the king in check, not making use of pins bb.
+                    uint64_t relevant_blockers = ~board.piece_bitboards[Piece::kEmpty];
+                    relevant_blockers &= ~from_bb & ~captured_bb;
+                    relevant_blockers |= to_bb;
+
+                    const uint64_t straight_attacks = RookAttackBB(own_king_sq, relevant_blockers);
+                    const uint64_t diagonal_attacks = BishopAttackBB(own_king_sq, relevant_blockers);
+
+                    const uint64_t enemy_pawns = board.piece_bitboards[Piece::kWhitePawn + 6 * enemy_color];
+                    const uint64_t enemy_knights = board.piece_bitboards[Piece::kWhiteKnight + 6 * enemy_color];
+                    const uint64_t enemy_rooks_queens = board.piece_bitboards[Piece::kWhiteRook + 6 * enemy_color] 
+                        | board.piece_bitboards[Piece::kWhiteQueen + 6 * enemy_color];
+                    const uint64_t enemy_bishops_queens = board.piece_bitboards[Piece::kWhiteBishop + 6 * enemy_color] 
+                        | board.piece_bitboards[Piece::kWhiteQueen + 6 * enemy_color];
+
+                    const bool straight_check = straight_attacks & (enemy_rooks_queens & ~captured_bb);
+                    const bool diagonal_check = diagonal_attacks & (enemy_bishops_queens & ~captured_bb);
+                    const bool pawn_check = PawnAttackBB(own_king_sq, my_color) & (enemy_pawns & ~captured_bb);
+                    const bool knight_check = kKnightAttacksBB[own_king_sq] & (enemy_knights & ~captured_bb);
+                    const bool leaves_in_check = straight_check || diagonal_check || pawn_check || knight_check;
+
+                    if (!leaves_in_check) {
+                        const Square from_sq = BitboardToSquare(from_bb);
+                        const Square to_sq = BitboardToSquare(to_bb);
+
+                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kEnPassant));
+                        move_count++;
                     }
 
-                    en_passant_takers &= ~origin_bb;
+                    en_passant_takers &= ~from_bb;
                 }
             }
         }
 
-        // Generate 1 square pawn pushes.
-        if constexpr (generate_quiet_moves || generate_quiet_promotions) {
-            uint64_t remaining_pawns = pawns;
-
-            while (remaining_pawns) {
-                const uint64_t pawn_bb = LSB(remaining_pawns);
-                const uint64_t destination_bb = Forward(pawn_bb, my_color);
-
-                if (destination_bb & empty) {
-                    const bool is_promotion = destination_bb & kRankPromotion[my_color];
-
-                    if (!leaves_king_in_check(pawn_bb, destination_bb)) {
-                        if (is_promotion) {
-                            if constexpr (generate_quiet_promotions) {
-                                add_promotions(BitboardToSquare(pawn_bb), BitboardToSquare(destination_bb));
-                            }
-                        } else {
-                            if constexpr (generate_quiet_moves) {
-                                moves.push_back(Move(BitboardToSquare(pawn_bb), BitboardToSquare(destination_bb)));
-                                ++new_moves_count;
-                            }
-                        }
-                    }
-                }
-
-                remaining_pawns &= ~pawn_bb;
-            }
-        }
-
-        // Generate double pushes.
-        if constexpr (generate_quiet_moves) {
-            uint64_t remaining_pawns = pawns;
-
-            while (remaining_pawns) {
-                const uint64_t pawn_bb = LSB(remaining_pawns);
-
-                if (pawn_bb & kRankPawnDoublePush[my_color]) {
-                    const uint64_t middle_bb = Forward(pawn_bb, my_color);
-                    const uint64_t destination_bb = Forward(middle_bb, my_color);
-
-                    if ((middle_bb & empty) && (destination_bb & empty) && !leaves_king_in_check(pawn_bb, destination_bb)) {
-                        moves.push_back(Move(BitboardToSquare(pawn_bb), BitboardToSquare(destination_bb)));
-                        ++new_moves_count;
-                    }
-                }
-
-                remaining_pawns &= ~pawn_bb;
-            }
-        }
-
-        return new_moves_count;
+        return move_count;
     }
 
     template <MoveGenType type>
-    size_t GenerateKnightMoves(Board &board, std::vector<Move> &moves) {
-        Color my_color = board.turn;
-        Color opposite_color = (Color)(1 - my_color);
+    size_t GenerateKnightMoves(Board &board, std::vector<Move> &moves, const MoveGenInfo &precomputed_info) {
+        size_t move_count = 0;
 
-        // For generating candidate moves for a knight.
-        uint64_t knights_bb = board.piece_bitboards[Piece::kWhiteKnight + 6 * my_color];
-        uint64_t good_dests_bb = 0ULL;
-        if constexpr (type == movegen::MoveGenType::kAll) {
-            good_dests_bb = board.color_bitboards[opposite_color] | board.piece_bitboards[Piece::kEmpty];
-        }
-        else if constexpr (type == movegen::MoveGenType::kQuiet) {
-            good_dests_bb = board.piece_bitboards[Piece::kEmpty];
-        } 
-        else if constexpr (
-            type == movegen::MoveGenType::kTactical ||
-            type == movegen::MoveGenType::kCapture
-        ) {
-            good_dests_bb = board.color_bitboards[opposite_color];
-        }
+        // Helpers
+        const Color my_color = board.turn;
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+        const size_t num_checkers = SetBitsCount(precomputed_info.checkers_bb);
 
-        // For checking later if a move leaves you in check
-        uint64_t blockers = (board.color_bitboards[0] | board.color_bitboards[1]);
-        uint64_t king_bb = board.piece_bitboards[Piece::kWhiteKing + 6 * my_color];
-        Square king_sq = BitboardToSquare(king_bb); 
-        
-        size_t new_moves_count = 0;
+        // Only king evasions are legal when in double check.
+        if (num_checkers >= 2) 
+            return 0;
 
-        // Itterate through all knight of that color.
-        while (knights_bb) {
-            uint64_t origin_bb = LSB(knights_bb);
+        // Candidate destination square.
+        uint64_t candidate_to_bb = 0ull;
+        if constexpr (type == MoveGenType::kAll)
+            candidate_to_bb = ~board.color_bitboards[my_color];
+        else if constexpr (type == MoveGenType::kQuiet)
+            candidate_to_bb = board.piece_bitboards[Piece::kEmpty];
+        else if constexpr (type == MoveGenType::kTactical || type == MoveGenType::kCapture)
+            candidate_to_bb = board.color_bitboards[enemy_color];
 
-            // Get the moves that don't capture one of your pieces.
-            uint64_t attacks_bb = kKnightAttacksBB[BitboardToSquare(origin_bb)];
-            attacks_bb &= good_dests_bb;
+        // Leave as candidate destination squares only ones that get you out of check.
+        uint64_t capture_block_bb = ~0ull;
+        if (num_checkers == 1) {
+            capture_block_bb = 0ull;
+            
+            // Capture the checking piece.
+            if constexpr (type != MoveGenType::kQuiet)
+                capture_block_bb |= precomputed_info.checkers_bb;
 
-            // Itterate through them
-            while (attacks_bb) {
-                uint64_t dest_bb = LSB(attacks_bb);
-
-                uint64_t relevant_blockers = (blockers | dest_bb) & ~origin_bb;
-                uint64_t straights = RookAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                uint64_t diagonals = BishopAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-
-                bool check_on_straights = straights & (board.piece_bitboards[Piece::kWhiteRook + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool check_on_diagonals = diagonals & (board.piece_bitboards[Piece::kWhiteBishop + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool pawn_check = (PawnAttackBB(BitboardToSquare(king_bb), my_color) & ~dest_bb) & board.piece_bitboards[Piece::kWhitePawn + 6*opposite_color];
-                bool knight_check = (kKnightAttacksBB[BitboardToSquare(king_bb)] & ~dest_bb) & board.piece_bitboards[Piece::kWhiteKnight + 6*opposite_color];
-
-                if (check_on_diagonals || check_on_straights || pawn_check || knight_check) {
-                    attacks_bb &= ~dest_bb;
-                    continue;
+            // Block the check.
+            if constexpr (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+                if (precomputed_info.checkers_bb &
+                    ( board.piece_bitboards[kWhiteBishop + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteRook + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteQueen + 6*enemy_color])
+                ) {
+                    capture_block_bb |= kSegmentBB[BitboardToSquare(precomputed_info.checkers_bb)][own_king_sq];
                 }
-
-                // Add to move list.
-                moves.push_back(Move(BitboardToSquare(origin_bb), BitboardToSquare(dest_bb)));
-                new_moves_count++;
-
-                // Remove LSB
-                attacks_bb &= ~dest_bb;
             }
+        }
+        candidate_to_bb &= capture_block_bb;
 
-            // Remove LSB
-            knights_bb &= ~origin_bb;
+        // Non pinned knight moves
+        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteKnight + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {\
+            const Square sq = LSBSquare(bb);
+            uint64_t to_bb = kKnightAttacksBB[sq] & candidate_to_bb;
+
+            while (to_bb) {
+                uint64_t to_sq_bb = LSB(to_bb);
+                const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                moves.push_back(Move(sq, to_sq));
+                move_count++;
+
+                to_bb &= ~to_sq_bb;
+            }
         }
 
-        return new_moves_count;
+        // Pinned knights cannot move, so done.
+        return move_count;
     }
 
     template<MoveGenType type>
-    size_t GenerateBishopMoves(Board &board, std::vector<Move> &moves) {
-        Color my_color = board.turn;
-        Color opposite_color = (Color)(1 - my_color);
+    size_t GenerateBishopMoves(Board &board, std::vector<Move> &moves, const MoveGenInfo &precomputed_info) {
+        size_t move_count = 0;
 
-        // For generating candidate moves for a bishop
-        uint64_t bishops_bb = board.piece_bitboards[Piece::kWhiteBishop + 6 * my_color];
-        uint64_t good_dests_bb = 0ULL;
-        if constexpr (type == movegen::MoveGenType::kAll) {
-            good_dests_bb = board.color_bitboards[opposite_color] | board.piece_bitboards[Piece::kEmpty];
-        }
-        else if constexpr (type == movegen::MoveGenType::kQuiet) {
-            good_dests_bb = board.piece_bitboards[Piece::kEmpty];
-        } 
-        else if constexpr (
-            type == movegen::MoveGenType::kTactical ||
-            type == movegen::MoveGenType::kCapture
-        ) {
-            good_dests_bb = board.color_bitboards[opposite_color];
-        }
+        // Helpers
+        const Color my_color = board.turn;
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+        const size_t num_checkers = SetBitsCount(precomputed_info.checkers_bb);
 
-        // For checking later if a move leaves you in check.
-        uint64_t king_bb = board.piece_bitboards[Piece::kWhiteKing + 6 * my_color];
-        Square king_sq = BitboardToSquare(king_bb); 
-        uint64_t blockers = (board.color_bitboards[0] | board.color_bitboards[1]);
-                
-        // Count number of new moves added.
-        size_t new_moves_count = 0;
+        // Only king evasions are legal when in double check.
+        if (num_checkers >= 2) 
+            return 0;
 
-        // Itterate through all the bishops.
-        while (bishops_bb) {
-            uint64_t origin_bb = LSB(bishops_bb);
+        // Candidate destination square.
+        uint64_t candidate_to_bb = 0ull;
+        if constexpr (type == MoveGenType::kAll)
+            candidate_to_bb = ~board.color_bitboards[my_color];
+        else if constexpr (type == MoveGenType::kQuiet)
+            candidate_to_bb = board.piece_bitboards[Piece::kEmpty];
+        else if constexpr (type == MoveGenType::kTactical || type == MoveGenType::kCapture)
+            candidate_to_bb = board.color_bitboards[enemy_color];
 
-            // Get the possible destination squares for this move, that don't capture one of your pieces.
-            uint64_t attacks_bb = BishopAttackBB(BitboardToSquare(origin_bb), blockers);
-            attacks_bb &= good_dests_bb;
+        // Leave as candidate destination squares only ones that get you out of check.
+        uint64_t capture_block_bb = ~0ull;
+        if (num_checkers == 1) {
+            capture_block_bb = 0ull;
 
-            // Itterate through them
-            while (attacks_bb) {
-                uint64_t dest_bb = LSB(attacks_bb);
+            // Capture the checking piece.
+            if constexpr (type != MoveGenType::kQuiet)
+                capture_block_bb |= precomputed_info.checkers_bb;
 
-                // Make sure moving this bishop does not leave your king in check.
-                uint64_t relevant_blockers = (blockers | dest_bb) & ~origin_bb;
-                uint64_t straights = RookAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                uint64_t diagonals = BishopAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                
-                bool check_on_straights = straights & (board.piece_bitboards[Piece::kWhiteRook + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool check_on_diagonals = diagonals & (board.piece_bitboards[Piece::kWhiteBishop + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool pawn_check = (PawnAttackBB(BitboardToSquare(king_bb), my_color) & ~dest_bb) & board.piece_bitboards[Piece::kWhitePawn + 6*opposite_color];
-                bool knight_check = (kKnightAttacksBB[BitboardToSquare(king_bb)] & ~dest_bb) & board.piece_bitboards[Piece::kWhiteKnight + 6*opposite_color];
-
-                if (check_on_diagonals || check_on_straights || pawn_check || knight_check) {
-                    attacks_bb &= ~dest_bb;
-                    continue;
+            // Block the check.
+            if constexpr (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+                if (precomputed_info.checkers_bb &
+                    ( board.piece_bitboards[kWhiteBishop + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteRook + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteQueen + 6*enemy_color])
+                ) {
+                    capture_block_bb |= kSegmentBB[BitboardToSquare(precomputed_info.checkers_bb)][own_king_sq];
                 }
-                
-                // Move is legal.
-                moves.push_back(Move(BitboardToSquare(origin_bb), BitboardToSquare(dest_bb)));
-                new_moves_count++;
-
-                // Pop LSB
-                attacks_bb &= ~dest_bb;
             }
+        }
+        candidate_to_bb &= capture_block_bb;
+        
+        const uint64_t blockers = ~board.piece_bitboards[Piece::kEmpty];
 
-            // Pop LSB
-            bishops_bb &= ~origin_bb;
+        // Non pinned bishop moves.
+        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteBishop + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            uint64_t to_bb = BishopAttackBB(sq, blockers) & candidate_to_bb;
+
+            while (to_bb) {
+                uint64_t to_sq_bb = LSB(to_bb);
+                const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                moves.push_back(Move(sq, to_sq));
+                move_count++;
+
+                to_bb &= ~to_sq_bb;
+            }
         }
 
-        return new_moves_count;
+        // Pinned bishop moves.
+        // Pinned bishops may move only if their king is not in check.
+        if (num_checkers == 0) {
+            for (uint64_t bb = board.piece_bitboards[Piece::kWhiteBishop + 6*my_color] & precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+                const Square sq = LSBSquare(bb);
+                const uint64_t pin_line_bb = kLineBB[own_king_sq][sq]; 
+                uint64_t to_bb = BishopAttackBB(sq, blockers) & candidate_to_bb & pin_line_bb;
+
+                while (to_bb) {
+                    uint64_t to_sq_bb = LSB(to_bb);
+                    const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                    moves.push_back(Move(sq, to_sq));
+                    move_count++;
+
+                    to_bb &= ~to_sq_bb;
+                }
+            }
+        }
+
+        return move_count;
     }
 
     template <MoveGenType type>
-    size_t GenerateRookMoves(Board &board, std::vector<Move> &moves) {
-        Color my_color = board.turn;
-        Color opposite_color = (Color)(1 - my_color);
+    size_t GenerateRookMoves(Board &board, std::vector<Move> &moves, const MoveGenInfo &precomputed_info) {
+        size_t move_count = 0;
 
-        // For generating candidate moves for a rook
-        uint64_t rooks_bb = board.piece_bitboards[Piece::kWhiteRook + 6 * my_color];
-        uint64_t good_dests_bb = 0ULL; 
-        if constexpr (type == movegen::MoveGenType::kAll) {
-            good_dests_bb = board.color_bitboards[opposite_color] | board.piece_bitboards[Piece::kEmpty];
-        }
-        else if constexpr (type == movegen::MoveGenType::kQuiet) {
-            good_dests_bb = board.piece_bitboards[Piece::kEmpty];
-        } 
-        else if constexpr (
-            type == movegen::MoveGenType::kTactical ||
-            type == movegen::MoveGenType::kCapture
-        ) {
-            good_dests_bb = board.color_bitboards[opposite_color];
-        }
+        // Helpers
+        const Color my_color = board.turn;
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+        const size_t num_checkers = SetBitsCount(precomputed_info.checkers_bb);
 
-        // For checking later if a move leaves you in check.
-        uint64_t king_bb = board.piece_bitboards[Piece::kWhiteKing + 6 * my_color];
-        Square king_sq = BitboardToSquare(king_bb); 
-        uint64_t blockers = (board.color_bitboards[0] | board.color_bitboards[1]);
-                
-        // Count number of new moves added.
-        size_t new_moves_count = 0;
+        // Only king evasions are legal when in double check.
+        if (num_checkers >= 2) 
+            return 0;
 
-        // Itterate through all the bishops.
-        while (rooks_bb) {
-            uint64_t origin_bb = LSB(rooks_bb);
+        // Candidate destination square.
+        uint64_t candidate_to_bb = 0ull;
+        if constexpr (type == MoveGenType::kAll)
+            candidate_to_bb = ~board.color_bitboards[my_color];
+        else if constexpr (type == MoveGenType::kQuiet)
+            candidate_to_bb = board.piece_bitboards[Piece::kEmpty];
+        else if constexpr (type == MoveGenType::kTactical || type == MoveGenType::kCapture)
+            candidate_to_bb = board.color_bitboards[enemy_color];
 
-            // Get the possible destination squares for this move, that don't capture one of your pieces.
-            uint64_t attacks_bb = RookAttackBB(BitboardToSquare(origin_bb), blockers);
-            attacks_bb &= good_dests_bb;
+        // Leave as candidate destination squares only ones that get you out of check.
+        uint64_t capture_block_bb = ~0ull;
+        if (num_checkers == 1) {
+            capture_block_bb = 0ull;
 
-            // Itterate through them
-            while (attacks_bb) {
-                uint64_t dest_bb = LSB(attacks_bb);
+            // Capture the checking piece.
+            if constexpr (type != MoveGenType::kQuiet)
+                capture_block_bb |= precomputed_info.checkers_bb;
 
-                // Make sure moving this bishop does not leave your king in check.
-                uint64_t relevant_blockers = (blockers | dest_bb) & ~origin_bb;
-                uint64_t straights = RookAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                uint64_t diagonals = BishopAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                
-                bool check_on_straights = straights & (board.piece_bitboards[Piece::kWhiteRook + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool check_on_diagonals = diagonals & (board.piece_bitboards[Piece::kWhiteBishop + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool pawn_check = (PawnAttackBB(BitboardToSquare(king_bb), my_color) & ~dest_bb) & board.piece_bitboards[Piece::kWhitePawn + 6*opposite_color];
-                bool knight_check = (kKnightAttacksBB[BitboardToSquare(king_bb)] & ~dest_bb) & board.piece_bitboards[Piece::kWhiteKnight + 6*opposite_color];
-
-                if (check_on_diagonals || check_on_straights || pawn_check || knight_check) {
-                    attacks_bb &= ~dest_bb;
-                    continue;
+            // Block the check.
+            if constexpr (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+                if (precomputed_info.checkers_bb &
+                    ( board.piece_bitboards[kWhiteBishop + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteRook + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteQueen + 6*enemy_color])
+                ) {
+                    capture_block_bb |= kSegmentBB[BitboardToSquare(precomputed_info.checkers_bb)][own_king_sq];
                 }
-                
-                // Move is legal.
-                moves.push_back(Move(BitboardToSquare(origin_bb), BitboardToSquare(dest_bb)));
-                new_moves_count++;
-
-                // Pop LSB
-                attacks_bb &= ~dest_bb;
             }
+        }
+        candidate_to_bb &= capture_block_bb;
+        
+        const uint64_t blockers = ~board.piece_bitboards[Piece::kEmpty];
 
-            // Pop LSB
-            rooks_bb &= ~origin_bb;
+        // Non pinned bishop moves.
+        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteRook + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            uint64_t to_bb = RookAttackBB(sq, blockers) & candidate_to_bb;
+
+            while (to_bb) {
+                uint64_t to_sq_bb = LSB(to_bb);
+                const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                moves.push_back(Move(sq, to_sq));
+                move_count++;
+
+                to_bb &= ~to_sq_bb;
+            }
         }
 
-        return new_moves_count;
+        // Pinned bishop moves.
+        // Pinned bishops may move only if their king is not in check.
+        if (num_checkers == 0) {
+            for (uint64_t bb = board.piece_bitboards[Piece::kWhiteRook + 6*my_color] & precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+                const Square sq = LSBSquare(bb);
+                const uint64_t pin_line_bb = kLineBB[own_king_sq][sq]; 
+                uint64_t to_bb = RookAttackBB(sq, blockers) & candidate_to_bb & pin_line_bb;
+
+                while (to_bb) {
+                    uint64_t to_sq_bb = LSB(to_bb);
+                    const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                    moves.push_back(Move(sq, to_sq));
+                    move_count++;
+
+                    to_bb &= ~to_sq_bb;
+                }
+            }
+        }
+
+        return move_count;
     }
 
     template<MoveGenType type>
-    size_t GenerateQueenMoves(Board &board, std::vector<Move> &moves) {
-        Color my_color = board.turn;
-        Color opposite_color = (Color)(1 - my_color);
+    size_t GenerateQueenMoves(Board &board, std::vector<Move> &moves,const MoveGenInfo &precomputed_info) {
+        size_t move_count = 0;
 
-        // For generating candidate moves for a queen.
-        uint64_t queens_bb = board.piece_bitboards[Piece::kWhiteQueen + 6 * my_color];
-        uint64_t good_dests_bb = 0ULL; 
-        if constexpr (type == movegen::MoveGenType::kAll) {
-            good_dests_bb = board.color_bitboards[opposite_color] | board.piece_bitboards[Piece::kEmpty];
-        }
-        else if constexpr (type == movegen::MoveGenType::kQuiet) {
-            good_dests_bb = board.piece_bitboards[Piece::kEmpty];
-        } 
-        else if constexpr (
-            type == movegen::MoveGenType::kTactical ||
-            type == movegen::MoveGenType::kCapture
-        ) {
-            good_dests_bb = board.color_bitboards[opposite_color];
-        }
+        // Helpers
+        const Color my_color = board.turn;
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+        const size_t num_checkers = SetBitsCount(precomputed_info.checkers_bb);
 
-        // For checking later if a move leaves you in check.
-        Square king_sq = BitboardToSquare(board.piece_bitboards[Piece::kWhiteKing + 6 * my_color]); 
-        uint64_t blockers = (board.color_bitboards[0] | board.color_bitboards[1]);
-                
-        // Count number of new moves added.
-        size_t new_moves_count = 0;
+        // Only king evasions are legal when in double check.
+        if (num_checkers >= 2) 
+            return 0;
 
-        // Itterate through all the bishops.
-        while (queens_bb) {
-            uint64_t origin_bb = LSB(queens_bb);
+        // Candidate destination square.
+        uint64_t candidate_to_bb = 0ull;
+        if constexpr (type == MoveGenType::kAll)
+            candidate_to_bb = ~board.color_bitboards[my_color];
+        else if constexpr (type == MoveGenType::kQuiet)
+            candidate_to_bb = board.piece_bitboards[Piece::kEmpty];
+        else if constexpr (type == MoveGenType::kTactical || type == MoveGenType::kCapture)
+            candidate_to_bb = board.color_bitboards[enemy_color];
 
-            // Get the possible destination squares for this move, that don't capture one of your pieces.
-            uint64_t attacks_bb = QueenAttackBB(BitboardToSquare(origin_bb), blockers);
-            attacks_bb &= good_dests_bb;
+        // Leave as candidate destination squares only ones that get you out of check.
+        uint64_t capture_block_bb = ~0ull;
+        if (num_checkers == 1) {
+            capture_block_bb = 0ull;
 
-            // Itterate through them
-            while (attacks_bb) {
-                uint64_t dest_bb = LSB(attacks_bb);
+            // Capture the checking piece.
+            if constexpr (type != MoveGenType::kQuiet)
+                capture_block_bb |= precomputed_info.checkers_bb;
 
-                // Make sure moving this bishop does not leave your king in check.
-                uint64_t relevant_blockers = (blockers | dest_bb) & ~origin_bb;
-                uint64_t straights = RookAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                uint64_t diagonals = BishopAttackBB(king_sq, relevant_blockers) & ~dest_bb;
-                
-                bool check_on_straights = straights & (board.piece_bitboards[Piece::kWhiteRook + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool check_on_diagonals = diagonals & (board.piece_bitboards[Piece::kWhiteBishop + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-                bool pawn_check = (PawnAttackBB(king_sq, my_color) & ~dest_bb) & board.piece_bitboards[Piece::kWhitePawn + 6*opposite_color];
-                bool knight_check = (kKnightAttacksBB[king_sq] & ~dest_bb) & board.piece_bitboards[Piece::kWhiteKnight + 6*opposite_color];
-
-                if (check_on_diagonals || check_on_straights || knight_check || pawn_check) {
-                    attacks_bb &= ~dest_bb;
-                    continue;
+            // Block the check.
+            if constexpr (type == MoveGenType::kAll || type == MoveGenType::kQuiet) {
+                if (precomputed_info.checkers_bb &
+                    ( board.piece_bitboards[kWhiteBishop + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteRook + 6*enemy_color]
+                    | board.piece_bitboards[kWhiteQueen + 6*enemy_color])
+                ) {
+                    capture_block_bb |= kSegmentBB[BitboardToSquare(precomputed_info.checkers_bb)][own_king_sq];
                 }
-                
-                // Move is legal.
-                moves.push_back(Move(BitboardToSquare(origin_bb), BitboardToSquare(dest_bb)));
-                new_moves_count++;
-
-                // Pop LSB
-                attacks_bb &= ~dest_bb;
             }
+        }
+        candidate_to_bb &= capture_block_bb;
+        
+        const uint64_t blockers = ~board.piece_bitboards[Piece::kEmpty];
 
-            // Pop LSB
-            queens_bb &= ~origin_bb;
+        // Non pinned bishop moves.
+        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteQueen + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+            const Square sq = LSBSquare(bb);
+            uint64_t to_bb = QueenAttackBB(sq, blockers) & candidate_to_bb;
+
+            while (to_bb) {
+                uint64_t to_sq_bb = LSB(to_bb);
+                const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                moves.push_back(Move(sq, to_sq));
+                move_count++;
+
+                to_bb &= ~to_sq_bb;
+            }
         }
 
-        return new_moves_count;
+        // Pinned bishop moves.
+        // Pinned bishops may move only if their king is not in check.
+        if (num_checkers == 0) {
+            for (uint64_t bb = board.piece_bitboards[Piece::kWhiteQueen + 6*my_color] & precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
+                const Square sq = LSBSquare(bb);
+                const uint64_t pin_line_bb = kLineBB[own_king_sq][sq]; 
+                uint64_t to_bb = QueenAttackBB(sq, blockers) & candidate_to_bb & pin_line_bb;
+
+                while (to_bb) {
+                    uint64_t to_sq_bb = LSB(to_bb);
+                    const Square to_sq = BitboardToSquare(to_sq_bb);
+
+                    moves.push_back(Move(sq, to_sq));
+                    move_count++;
+
+                    to_bb &= ~to_sq_bb;
+                }
+            }
+        }
+
+        return move_count;
     }
 
     template<MoveGenType type>
-    size_t GenerateKingMoves(Board &board, std::vector<Move> &moves) {
-        Color my_color = board.turn;
-        Color opposite_color = (Color)(1 - my_color);
-        Square king_sq = BitboardToSquare(board.piece_bitboards[Piece::kWhiteKing + 6 * my_color]);
-        Square enemy_king_sq = BitboardToSquare(board.piece_bitboards[Piece::kWhiteKing + 6 * opposite_color]);
-        uint64_t blockers = (board.color_bitboards[0] | board.color_bitboards[1]);
+    size_t GenerateKingMoves(Board &board, std::vector<Move> &moves, const MoveGenInfo &precomputed_info) {
+        size_t move_count = 0;
+
+        // Helpers
+        const Color my_color = board.turn;
+        const Color enemy_color = OppositeColor(my_color);
+        const uint64_t own_king = board.piece_bitboards[kWhiteKing + 6*my_color];
+        const Square own_king_sq = BitboardToSquare(own_king);
+
+        const uint64_t blockers = board.color_bitboards[Color::kWhite] | board.color_bitboards[Color::kBlack];
+        // We must remove our king from blockers so that, among the squares defended by enemy pieces are
+        // xrays through the king to avoid the king moving from check to check
+        // Q . . k . -> Q . . . k should be invalid
+        const uint64_t enemy_def_bb = board.DefendedBB(enemy_color, blockers & ~own_king);
         
-        // Get king destination squares that don't put the king near the enemy king or take its own pieces.
-        uint64_t king_attacks_bb = kKingAttacksBB[king_sq] & ~kKingAttacksBB[enemy_king_sq];
-        king_attacks_bb &= ~board.color_bitboards[my_color];
+        // Simple king moves.
+        uint64_t to_bb = kKingAttacksBB[own_king_sq] & ~board.color_bitboards[my_color] & ~enemy_def_bb;
+        if constexpr (type == MoveGenType::kCapture || type == MoveGenType::kTactical)
+            to_bb &= board.color_bitboards[enemy_color];
+        if constexpr (type == MoveGenType::kQuiet)
+            to_bb &= board.piece_bitboards[Piece::kEmpty];
 
-        // Count the numver of new moves.
-        size_t new_moves_count = 0;
+        while (to_bb) {
+            uint64_t to_sq_bb = LSB(to_bb);
+            Square to_sq = BitboardToSquare(to_sq_bb);
 
-        // To generate captures only.
-        if constexpr (
-            type == movegen::MoveGenType::kTactical ||
-            type == movegen::MoveGenType::kCapture
-        ) {
-            king_attacks_bb &= board.color_bitboards[opposite_color];
+            moves.push_back(Move(own_king_sq, to_sq));
+            move_count++;
+
+            to_bb &= ~to_sq_bb;
         }
 
-        // To generate quiet moves only.
-        if constexpr (
-            type == movegen::MoveGenType::kQuiet
-        ) {
-            king_attacks_bb &= ~board.color_bitboards[opposite_color];
-        }
+        // Castles
+        if constexpr (type == MoveGenType::kQuiet || type == MoveGenType::kAll) {
+            uint8_t relevant_castles = board.castling & kCastlesByColor[my_color];
 
-        // Itterate through them.
-        while (king_attacks_bb) {
-            uint64_t dest_bb = LSB(king_attacks_bb);
-
-            // Check if this move leaves the king in check.
-            uint64_t relevant_blockers = (blockers & ~SquareToBitboard(king_sq)) & ~dest_bb;
-            uint64_t straights = RookAttackBB(BitboardToSquare(dest_bb), relevant_blockers);
-            uint64_t diagonals = BishopAttackBB(BitboardToSquare(dest_bb), relevant_blockers); 
-
-            bool check_on_staights = straights & (board.piece_bitboards[Piece::kWhiteRook + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-            bool check_on_diagonals = diagonals & (board.piece_bitboards[Piece::kWhiteBishop + 6*opposite_color] | board.piece_bitboards[Piece::kWhiteQueen + 6*opposite_color]);
-            bool pawn_check = PawnAttackBB(BitboardToSquare(dest_bb), my_color) & board.piece_bitboards[Piece::kWhitePawn + 6*opposite_color];
-            bool knight_check = kKnightAttacksBB[BitboardToSquare(dest_bb)] & board.piece_bitboards[Piece::kWhiteKnight + 6*opposite_color];
-
-            if (check_on_diagonals || check_on_staights || pawn_check || knight_check) {
-                king_attacks_bb &= ~dest_bb;
-                continue;
-            }
-
-            // Move is legal.
-            moves.push_back(Move(BitboardToSquare(SquareToBitboard(king_sq)), BitboardToSquare(dest_bb)));
-            new_moves_count++;
-
-            // Pop LSB
-            king_attacks_bb &= ~dest_bb;
-        }
-
-        // Castling
-        uint8_t relevant_castles = board.castling & kCastlesByColor[my_color];
-        
-        // Castles are quiet moves.
-        if constexpr (
-            type == lightknight::movegen::MoveGenType::kAll ||
-            type == lightknight::movegen::MoveGenType::kQuiet
-        ) {
             while (relevant_castles) {
                 uint8_t current_castle = LSB(relevant_castles);
-                
+                    
                 // Check the needed squares are empty.
-                if (kCastleInfo[current_castle].needed_empty & (board.color_bitboards[0] | board.color_bitboards[1])) {
+                if (kCastleInfo[current_castle].needed_empty & blockers) {
                     relevant_castles &= ~current_castle;
                     continue;
                 }
 
                 // Check the square that need to be safe are safe.
-                uint64_t needed_safe = kCastleInfo[current_castle].needed_safe;
-                bool safe = true;
-                while (safe && needed_safe) {
-                    uint64_t needed_safe_lsb = LSB(needed_safe);
-                    
-                    if (board.IsSquareAttacked(needed_safe_lsb, my_color)) {
-                        safe = false;
-                    }
-                
-                    // Pop LSB
-                    needed_safe &= ~needed_safe_lsb;
-                }
-                if (!safe) {
+                if (kCastleInfo[current_castle].needed_safe & enemy_def_bb) {
                     relevant_castles &= ~current_castle;
                     continue;
                 }
 
-                // We trust that the board.castles flag ensures the king / rook have not been moved.
+                // We trust that the board.castles flag ensures the king / rook have not been moved (or captured).
                 // As such, this castle is legal.
                 Square origin_sq = BitboardToSquare(kCastleInfo[current_castle].king_origin);
                 Square dest_sq = BitboardToSquare(kCastleInfo[current_castle].king_destination);
                 moves.push_back(Move(origin_sq, dest_sq, PromotionPieceType::kKnight, MoveType::kCastling));
-                new_moves_count++;
+                move_count++;
 
                 // Pop LSB
                 relevant_castles &= ~current_castle;
             }    
         }
-        return new_moves_count;
+
+        return move_count;
     }
 
     template<MoveGenType type>
     size_t GenerateMoves(Board &board, std::vector<Move> &moves) {
         size_t moves_count = 0;
+        const MoveGenInfo precomputed_info = GetMoveGenInfo(board);
 
-        moves_count += GeneratePawnMoves<type>(board, moves);
-        moves_count += GenerateKnightMoves<type>(board, moves);
-        moves_count += GenerateBishopMoves<type>(board, moves);
-        moves_count += GenerateRookMoves<type>(board, moves);
-        moves_count += GenerateQueenMoves<type>(board, moves);
-        moves_count += GenerateKingMoves<type>(board, moves);
+        moves_count += GeneratePawnMoves<type>(board, moves, precomputed_info);
+        moves_count += GenerateKnightMoves<type>(board, moves, precomputed_info);
+        moves_count += GenerateBishopMoves<type>(board, moves, precomputed_info);
+        moves_count += GenerateRookMoves<type>(board, moves, precomputed_info);
+        moves_count += GenerateQueenMoves<type>(board, moves, precomputed_info);
+        moves_count += GenerateKingMoves<type>(board, moves, precomputed_info);
         
         return moves_count;
     }

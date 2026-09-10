@@ -269,7 +269,165 @@ namespace lightknight {
         return kForwardThreeFillBB[64 * (1-color) + BitboardToSquare(bitboard_sq)];
     }
     
+    // Bitboard of line connecting two squares.
+    // Returns 0ull if the squares are not alligned horizontally, vertically or diagonally.
+    // Otherwise, returns a mask of the straight or diagonal containing both points.
+    // Diagonal:
+    //   8  . . . . . . . .                 8  . . * . . . . .
+    //   7  . . . # . . . .                 7  . . . * . . . .
+    //   6  . . . . . . . .                 6  . . . . * . . .
+    //   5  . . . . . . . .      --->       5  . . . . . * . .
+    //   4  . . . . . . # .                 4  . . . . . . * .
+    //   3  . . . . . . . .                 3  . . . . . . . *
+    //   2  . . . . . . . .                 2  . . . . . . . .
+    //   1  . . . . . . . .                 1  . . . . . . . .
+    // Straight:
+    //   8  . . . . . . . .                 8  . . * . . . . .
+    //   7  . . . . . . . .                 7  . . * . . . . .
+    //   6  . . # . . . . .                 6  . . * . . . . .
+    //   5  . . . . . . . .      --->       5  . . * . . . . .
+    //   4  . . . . . . . .                 4  . . * . . . . .
+    //   3  . . # . . . . .                 3  . . * . . . . .
+    //   2  . . . . . . . .                 2  . . * . . . . .
+    //   1  . . . . . . . .                 1  . . * . . . . .
+    // Not alligned:
+    //   8  . . . . . . . .                 8  . . . . . . . .
+    //   7  . . . . . . . .                 7  . . . . . . . .
+    //   6  . # . . . . . .                 6  . . . . . . . .
+    //   5  . . . . . . . .      --->       5  . . . . . . . .
+    //   4  . . . . . . . .                 4  . . . . . . . .
+    //   3  . . . . . . . .                 3  . . . . . . . .
+    //   2  . . . # . . . .                 2  . . . . . . . .
+    //   1  . . . . . . . .                 1  . . . . . . . .
+    // Bitboard of the complete rank, file, or diagonal passing through two squares.
+    inline constexpr std::array<std::array<uint64_t, kNumSquares>, kNumSquares> kLineBB = [] {
+        std::array<std::array<uint64_t, kNumSquares>, kNumSquares> lines{};
 
+        for (int sq1 = 0; sq1 < kNumSquares; ++sq1) {
+            const int rank1 = Rank(static_cast<Square>(sq1));
+            const int file1 = File(static_cast<Square>(sq1));
+
+            for (int sq2 = 0; sq2 < kNumSquares; ++sq2) {
+                const int rank2 = Rank(static_cast<Square>(sq2));
+                const int file2 = File(static_cast<Square>(sq2));
+
+                const int dr = rank2 - rank1;
+                const int df = file2 - file1;
+
+                const int abs_dr = dr < 0 ? -dr : dr;
+                const int abs_df = df < 0 ? -df : df;
+
+                // The squares must be on the same rank, file, or diagonal.
+                if (dr != 0 && df != 0 && abs_dr != abs_df)
+                    continue;
+
+                if (sq1 == sq2) {
+                    lines[sq1][sq2] = SquareToBitboard(static_cast<Square>(sq1));
+                    continue;
+                }
+
+                // Direction from sq1 toward sq2.
+                const int step_rank = (dr > 0) - (dr < 0);
+                const int step_file = (df > 0) - (df < 0);
+
+                // Extend from sq1 backwards to the edge.
+                int rank = rank1;
+                int file = file1;
+
+                while (rank >= 0 && rank < 8 && file >= 0 && file < 8) {
+                    lines[sq1][sq2] |= SquareToBitboard(GetSquare(rank, file));
+
+                    rank -= step_rank;
+                    file -= step_file;
+                }
+
+                // Extend from sq1 forwards to the edge.
+                rank = rank1 + step_rank;
+                file = file1 + step_file;
+
+                while (rank >= 0 && rank < 8 && file >= 0 && file < 8) {
+                    lines[sq1][sq2] |= SquareToBitboard(GetSquare(rank, file));
+
+                    rank += step_rank;
+                    file += step_file;
+                }
+            }
+        }
+
+        return lines;
+    } ();
+
+    // Bitboard of the interval between two aligned squares, including both endpoints.
+    // Returns 0 if the squares are not aligned horizontally, vertically, or diagonally.
+    // Diagonal:
+    //   8  . . . . . . . .                 8  . . . . . . . .
+    //   7  . . . # . . . .                 7  . . . * . . . .
+    //   6  . . . . . . . .                 6  . . . . * . . .
+    //   5  . . . . . . . .      --->       5  . . . . . * . .
+    //   4  . . . . . . # .                 4  . . . . . . * .
+    //   3  . . . . . . . .                 3  . . . . . . . .
+    //   2  . . . . . . . .                 2  . . . . . . . .
+    //   1  . . . . . . . .                 1  . . . . . . . .
+    // Straight:
+    //   8  . . . . . . . .                 8  . . . . . . . .
+    //   7  . . . . . . . .                 7  . . . . . . . .
+    //   6  . . # . . . . .                 6  . . * . . . . .
+    //   5  . . . . . . . .      --->       5  . . * . . . . .
+    //   4  . . . . . . . .                 4  . . * . . . . .
+    //   3  . . # . . . . .                 3  . . * . . . . .
+    //   2  . . . . . . . .                 2  . . . . . . . .
+    //   1  . . . . . . . .                 1  . . . . . . . .
+    // Not alligned:
+    //   8  . . . . . . . .                 8  . . . . . . . .
+    //   7  . . . . . . . .                 7  . . . . . . . .
+    //   6  . # . . . . . .                 6  . . . . . . . .
+    //   5  . . . . . . . .      --->       5  . . . . . . . .
+    //   4  . . . . . . . .                 4  . . . . . . . .
+    //   3  . . . . . . . .                 3  . . . . . . . .
+    //   2  . . . # . . . .                 2  . . . . . . . .
+    //   1  . . . . . . . .                 1  . . . . . . . .
+    inline constexpr std::array<std::array<uint64_t, kNumSquares>, kNumSquares> kSegmentBB = [] {
+        std::array<std::array<uint64_t, kNumSquares>, kNumSquares> between{};
+
+        for (int sq1 = 0; sq1 < kNumSquares; ++sq1) {
+            const int rank1 = Rank(static_cast<Square>(sq1));
+            const int file1 = File(static_cast<Square>(sq1));
+
+            for (int sq2 = 0; sq2 < kNumSquares; ++sq2) {
+                const int rank2 = Rank(static_cast<Square>(sq2));
+                const int file2 = File(static_cast<Square>(sq2));
+
+                const int dr = rank2 - rank1;
+                const int df = file2 - file1;
+
+                const int abs_dr = dr < 0 ? -dr : dr;
+                const int abs_df = df < 0 ? -df : df;
+
+                // Must be on the same rank, file, or diagonal.
+                if (dr != 0 && df != 0 && abs_dr != abs_df)
+                    continue;
+
+                const int step_rank = (dr > 0) - (dr < 0);
+                const int step_file = (df > 0) - (df < 0);
+
+                int rank = rank1;
+                int file = file1;
+
+                while (true) {
+                    between[sq1][sq2] |= SquareToBitboard(GetSquare(rank, file));
+
+                    if (rank == rank2 && file == file2)
+                        break;
+
+                    rank += step_rank;
+                    file += step_file;
+                }
+            }
+        }
+
+        return between;
+    }();
+    
     // ---------- Magic Bitboards ----------
     // Bishop attacks magics. More info at: https://www.chessprogramming.org/Magic_Bitboards
     inline constexpr int kBishopMagicShift = 64 - 9;  

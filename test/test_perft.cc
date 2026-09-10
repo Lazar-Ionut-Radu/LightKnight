@@ -155,7 +155,7 @@ PerftBenchmarkResult BenchmarkPerftDepth(
         const auto start =
             std::chrono::steady_clock::now();
 
-        nodes = lightknight::Perft(board, depth);
+        nodes = lightknight::Perft(board, depth, true);
 
         const auto end =
             std::chrono::steady_clock::now();
@@ -181,11 +181,9 @@ PerftBenchmarkResult BenchmarkPerftDepth(
         .depth = depth,
         .nodes = nodes,
         .mean_time_ms = mean_time_ms,
-        .std_time_ms =
-            SampleStandardDeviation(times_ms, mean_time_ms),
+        .std_time_ms = SampleStandardDeviation(times_ms, mean_time_ms),
         .mean_mnps = mean_mnps,
-        .std_mnps =
-            SampleStandardDeviation(speeds_mnps, mean_mnps)
+        .std_mnps = SampleStandardDeviation(speeds_mnps, mean_mnps)
     };
 }
 
@@ -251,21 +249,21 @@ TEST_CASE(
     PrintPerftBenchmarkTable(
         "Starting position",
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        6,
-        4
+        7,
+        1
     );
 
     PrintPerftBenchmarkTable(
         "Endgame position",
         "8/5p2/k3r1p1/P6p/5K1P/6P1/R4P2/8 w - - 16 65",
-        6,
-        4
+        7,
+        1
     );
 
     PrintPerftBenchmarkTable(
         "Midgame position",
         "r1bq1rk1/2p1bppp/p1n2n2/1p1pp3/4P3/1BP2N2/PP1P1PPP/RNBQR1K1 w - d6 0 9",
-        6,
-        4
+        7,
+        1
     );
 }

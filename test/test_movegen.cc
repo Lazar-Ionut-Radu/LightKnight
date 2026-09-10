@@ -329,7 +329,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GeneratePawnMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GeneratePawnMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -389,7 +390,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GenerateKnightMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GenerateKnightMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -435,7 +437,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GenerateBishopMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GenerateBishopMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -473,7 +476,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GenerateRookMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GenerateRookMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -519,7 +523,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GenerateQueenMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GenerateQueenMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
@@ -574,7 +579,8 @@ TEST_CASE(
                 Board board = Board(fen_str);
 
                 std::vector<Move> moves;
-                movegen::GenerateKingMoves<movegen::MoveGenType::kAll>(board, moves);
+                const movegen::MoveGenInfo precomputed_info = movegen::GetMoveGenInfo(board);
+                movegen::GenerateKingMoves<movegen::MoveGenType::kAll>(board, moves, precomputed_info);
 
                 TestEqualMoveLists(moves, expected_moves);
             }
