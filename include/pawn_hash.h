@@ -14,7 +14,7 @@ namespace lightknight::eval {
         uint64_t isolated_pawns_bb[kNumColors]{0};
         uint64_t connected_pawns_bb[kNumColors]{0};
         uint64_t protected_pawns_bb[kNumColors]{0};
-        int pawn_eval[2]{0};
+        std::pair<int, int> pawn_eval{0, 0};
         bool valid = false;
     };
 
