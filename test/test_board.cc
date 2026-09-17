@@ -197,7 +197,7 @@ TEST_CASE(
             Move(
                 Square::E5,
                 Square::D6,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kEnPassant
             ),
             "8/8/3P4/8/8/8/8/4K2k b - - 0 30",
@@ -209,7 +209,7 @@ TEST_CASE(
             Move(
                 Square::D4,
                 Square::E3,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kEnPassant
             ),
             "4k3/8/8/8/8/4p3/8/7K w - - 0 19",
@@ -221,7 +221,7 @@ TEST_CASE(
             Move(
                 Square::A7,
                 Square::A8,
-                PromotionPieceType::kQueen,
+                PromPieceType::kQueen,
                 MoveType::kPromotion
             ),
             "Q6k/8/8/8/8/8/8/7K b - - 0 40",
@@ -233,7 +233,7 @@ TEST_CASE(
             Move(
                 Square::A7,
                 Square::B8,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kPromotion
             ),
             "1N5k/8/8/8/8/8/8/7K b - - 0 40",
@@ -245,7 +245,7 @@ TEST_CASE(
             Move(
                 Square::E1,
                 Square::G1,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ),
             "r3k2r/8/8/8/8/8/8/R4RK1 b kq - 6 10",
@@ -257,7 +257,7 @@ TEST_CASE(
             Move(
                 Square::E1,
                 Square::C1,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ),
             "r3k2r/8/8/8/8/8/8/2KR3R b kq - 6 10",
@@ -269,7 +269,7 @@ TEST_CASE(
             Move(
                 Square::E8,
                 Square::G8,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ),
             "r4rk1/8/8/8/8/8/8/R3K2R w KQ - 6 11",
@@ -281,7 +281,7 @@ TEST_CASE(
             Move(
                 Square::E8,
                 Square::C8,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ),
             "2kr3r/8/8/8/8/8/8/R3K2R w KQ - 6 11",
@@ -406,13 +406,13 @@ const std::vector<GameSequence> test_game_sequences = {
             Move(
                 Square::E1,
                 Square::G1,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ), // 6. O-O O-O
             Move(
                 Square::E8,
                 Square::G8,
-                PromotionPieceType::kKnight,
+                PromPieceType::kKnight,
                 MoveType::kCastling
             ), 
             Move(Square::F1, Square::E1), // 7. Re1 a6

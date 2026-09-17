@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <array>
 #include <iostream>
+#include <ostream>
 #include <tuple>
 #include <cassert>
 #include <vector>
@@ -806,80 +807,93 @@ namespace lightknight {
     // ----------------------------------------- MOVES -----------------------------------------
     // -----------------------------------------------------------------------------------------
 
-    enum PromotionPieceType : uint16_t {
+    enum PromPieceType : uint32_t {
         kKnight,
-        kBishop = 1 << 12,
-        kRook = 2 << 12,
-        kQueen = 3 << 12
+        kBishop = 1 << 20,
+        kRook = 2 << 20,
+        kQueen = 3 << 20
     };
-    std::ostream& operator<<(std::ostream& os, lightknight::PromotionPieceType piece);
+    std::ostream& operator<<(std::ostream& os, lightknight::PromPieceType piece);
 
     inline constexpr Piece GetPiece(
         Color color,
-        PromotionPieceType promotion_piece_type
+        PromPieceType promotion_piece_type
     ) {
         return static_cast<Piece>(
             static_cast<std::uint8_t>(color) * 6
             + 1
-            + (static_cast<std::uint16_t>(promotion_piece_type) >> 12)
+            + (static_cast<std::uint16_t>(promotion_piece_type) >> 20)
         );
     }
 
-    enum MoveType : uint16_t {
+    enum MoveType : uint32_t {
         kNormal,
-        kPromotion = 1 << 14,
-        kCastling = 2 << 14,
-        kEnPassant = 3 << 14
+        kPromotion = 1 << 16,
+        kCastling = 2 << 16,
+        kEnPassant = 3 << 16
     };
 
-    // bits 0-5: origin square (value from 0 to 63)
-    // bits 6-11: destination square (value from 0 to 63)
-    // bits 12-13: promotion piece (defined above knight=0, bishop=1, rook=2, queen=3)
-    // bits 14-15: move type flag (defined above promotion=1, castling=2, en_passant=3)
+    constexpr uint32_t kOriginMask      = 0x000000FF;
+    constexpr uint32_t kDestMask        = 0x0000FF00;
+    constexpr uint32_t kMoveTypeMask    = 0x00030000;
+    constexpr uint32_t kPromPieceMask   = 0x00300000;
+    constexpr uint32_t kCaptureFlagMask = 0x01000000;
+
+    // Remake this to be 32 bits
+    // Bits 0-7: Origin square
+    // Bits 8-15: Destination square
+    // Bits 16-17: Move type:
+    //     00 - normal
+    //     01 - promotion
+    //     10 - castling
+    //     11 - en passant
+    // Bits 20-21: Promotion piece
+    //     00 - knight
+    //     01 - bishop
+    //     10 - rook
+    //     11 - queen
+    // Bit 24: Capture flag
     class Move {
     public:
-        uint16_t data;
+        uint32_t data;
 
-        // Constructors
         constexpr Move() : data(0) {}
-        constexpr explicit Move(uint16_t data) : data(data) {}
-
-        constexpr Move(Square origin, Square destination, PromotionPieceType promotionPieceType = PromotionPieceType::kKnight, MoveType moveType = MoveType::kNormal)
-            : data(origin + (destination << 6) + promotionPieceType + moveType) {}
+        constexpr explicit Move(uint32_t data) : data(data) {}
+        constexpr Move (Square origin, Square dest, PromPieceType prom = PromPieceType::kKnight, MoveType type = MoveType::kNormal, bool is_capture = false)
+            : data(
+                static_cast<uint32_t>(origin) 
+                | static_cast<uint32_t>(dest) << 8 
+                | static_cast<uint32_t>(prom) 
+                | static_cast<uint32_t>(type)
+                | static_cast<uint32_t>(is_capture) << 24
+            ) {}
         
-        // Static functions to create Move objects.
-        static constexpr Move Make(Square origin, Square destination, PromotionPieceType promotionPieceType = PromotionPieceType::kKnight, MoveType moveType = MoveType::kNormal) {
-            return Move(origin + (destination << 6) + promotionPieceType + moveType); 
-        };
+        constexpr Square OriginSquare() const { return static_cast<Square>(data & kOriginMask); }
+        constexpr Square DestSquare() const { return static_cast<Square>((data & kDestMask) >> 8); }
+        constexpr uint64_t OriginBB() const { return SquareToBitboard(OriginSquare()); }
+        constexpr uint64_t DestBB() const { return SquareToBitboard(DestSquare()); }
+
+        constexpr PromPieceType GetPromPieceType() const { return static_cast<PromPieceType>(data & kPromPieceMask); }
+        constexpr MoveType GetMoveType() const { return static_cast<MoveType>(data & kMoveTypeMask); }
+        constexpr Piece PromPiece(Color color) const {
+            assert(GetMoveType() == MoveType::kPromotion);
+
+            const uint32_t prom_idx = static_cast<uint32_t>(GetPromPieceType()) >> 20;
+            return static_cast<Piece>(Piece::kWhiteKnight + prom_idx + 6 * static_cast<uint8_t>(color));
+        } 
 
         constexpr bool IsNull() const { return data == 0; }
-
-        // Operator overloads
-        constexpr bool operator==(const Move& move) const { return data == move.data; }
-        constexpr bool operator!=(const Move& move) const { return data != move.data; }  
-        constexpr explicit operator bool() const { return data != 0; }
-
-        // Methods to return certain parts of the move.
-        constexpr Square GetOriginSquare() const { return (Square)(data & 0x3F); }
-        constexpr Square GetDestinationSquare() const { return (Square)((data >> 6) & 0x3F); }
-        constexpr PromotionPieceType GetPromotionPieceType() const { return (PromotionPieceType)(data & (3 << 12)); } 
-        constexpr MoveType GetMoveType() const { return (MoveType)(data & (3 << 14)); } 
-
-        constexpr uint64_t GetOriginBitboard() const { return SquareToBitboard(this->GetOriginSquare()); }
-        constexpr uint64_t GetDestionationBitboard() const { return SquareToBitboard(this->GetDestinationSquare()); }
-        Piece GetPromotedPiece(Color color) const;
-
+        constexpr bool IsCapture() const { return data & kCaptureFlagMask; }
         constexpr bool IsPromotion() const { return GetMoveType() == MoveType::kPromotion; }
-        constexpr bool IsQueenPromotion() const {
-            return IsPromotion() && GetPromotionPieceType() == PromotionPieceType::kQueen;
-        }
-        constexpr bool IsUnderpromotion() const {
-            return IsPromotion() && GetPromotionPieceType() != PromotionPieceType::kQueen; 
-        }
-    
-        #include <ostream>
+        constexpr bool IsUnderpromotion() const { return IsPromotion() && GetPromPieceType() != PromPieceType::kQueen; }
+        constexpr bool IsQueenPromotion() const { return IsPromotion() && GetPromPieceType() == PromPieceType::kQueen; }
+
+        constexpr bool operator==(const Move& move) const { return !((data ^ move.data) & 0xFFFFFF); }
+        constexpr bool operator!=(const Move& move) const { return (data ^ move.data) & 0xFFFFFF; }
+        constexpr explicit operator bool() const { return data; }
     };
-    std::ostream& operator<<(std::ostream& os, const lightknight::Move& move);
+
+    std::ostream& operator<<(std::ostream& os, const Move& move);
 
     // Debug
     void PrintBitboard(uint64_t bitboard);

@@ -235,31 +235,31 @@ TEST_CASE(
             { // White, pawn promotions, captures or not, pinned or not to the king.
                 "1qn1kb2/P1ppp1P1/7K/8/8/8/3Q3R/RNB5 w - - 0 1",
                 {
-                    Move(Square::A7, Square::A8,  PromotionPieceType::kKnight, MoveType::kPromotion),
-                    Move(Square::A7, Square::A8,  PromotionPieceType::kBishop, MoveType::kPromotion),
-                    Move(Square::A7, Square::A8,  PromotionPieceType::kRook, MoveType::kPromotion),
-                    Move(Square::A7, Square::A8,  PromotionPieceType::kQueen, MoveType::kPromotion),
-                    Move(Square::A7, Square::B8,  PromotionPieceType::kKnight, MoveType::kPromotion),
-                    Move(Square::A7, Square::B8,  PromotionPieceType::kBishop, MoveType::kPromotion),
-                    Move(Square::A7, Square::B8,  PromotionPieceType::kQueen, MoveType::kPromotion),
-                    Move(Square::A7, Square::B8,  PromotionPieceType::kRook, MoveType::kPromotion),
-                    Move(Square::G7, Square::F8,  PromotionPieceType::kKnight, MoveType::kPromotion),
-                    Move(Square::G7, Square::F8,  PromotionPieceType::kBishop, MoveType::kPromotion),
-                    Move(Square::G7, Square::F8,  PromotionPieceType::kRook, MoveType::kPromotion),
-                    Move(Square::G7, Square::F8,  PromotionPieceType::kQueen, MoveType::kPromotion),
+                    Move(Square::A7, Square::A8,  PromPieceType::kKnight, MoveType::kPromotion),
+                    Move(Square::A7, Square::A8,  PromPieceType::kBishop, MoveType::kPromotion),
+                    Move(Square::A7, Square::A8,  PromPieceType::kRook, MoveType::kPromotion),
+                    Move(Square::A7, Square::A8,  PromPieceType::kQueen, MoveType::kPromotion),
+                    Move(Square::A7, Square::B8,  PromPieceType::kKnight, MoveType::kPromotion),
+                    Move(Square::A7, Square::B8,  PromPieceType::kBishop, MoveType::kPromotion),
+                    Move(Square::A7, Square::B8,  PromPieceType::kQueen, MoveType::kPromotion),
+                    Move(Square::A7, Square::B8,  PromPieceType::kRook, MoveType::kPromotion),
+                    Move(Square::G7, Square::F8,  PromPieceType::kKnight, MoveType::kPromotion),
+                    Move(Square::G7, Square::F8,  PromPieceType::kBishop, MoveType::kPromotion),
+                    Move(Square::G7, Square::F8,  PromPieceType::kRook, MoveType::kPromotion),
+                    Move(Square::G7, Square::F8,  PromPieceType::kQueen, MoveType::kPromotion),
                 }
             },
             { // Black, pawn promotions, captures or not, pinned or not to the king.
                 "8/P5P1/7K/8/8/8/1p2Q1pk/B6N b - - 0 1",
                 {
-                    Move(Square::B2, Square::B1, PromotionPieceType::kKnight, MoveType::kPromotion),
-                    Move(Square::B2, Square::B1, PromotionPieceType::kBishop, MoveType::kPromotion),
-                    Move(Square::B2, Square::B1, PromotionPieceType::kRook, MoveType::kPromotion),
-                    Move(Square::B2, Square::B1, PromotionPieceType::kQueen, MoveType::kPromotion),
-                    Move(Square::B2, Square::A1, PromotionPieceType::kKnight, MoveType::kPromotion),
-                    Move(Square::B2, Square::A1, PromotionPieceType::kBishop, MoveType::kPromotion),
-                    Move(Square::B2, Square::A1, PromotionPieceType::kRook, MoveType::kPromotion),
-                    Move(Square::B2, Square::A1, PromotionPieceType::kQueen, MoveType::kPromotion),
+                    Move(Square::B2, Square::B1, PromPieceType::kKnight, MoveType::kPromotion),
+                    Move(Square::B2, Square::B1, PromPieceType::kBishop, MoveType::kPromotion),
+                    Move(Square::B2, Square::B1, PromPieceType::kRook, MoveType::kPromotion),
+                    Move(Square::B2, Square::B1, PromPieceType::kQueen, MoveType::kPromotion),
+                    Move(Square::B2, Square::A1, PromPieceType::kKnight, MoveType::kPromotion),
+                    Move(Square::B2, Square::A1, PromPieceType::kBishop, MoveType::kPromotion),
+                    Move(Square::B2, Square::A1, PromPieceType::kRook, MoveType::kPromotion),
+                    Move(Square::B2, Square::A1, PromPieceType::kQueen, MoveType::kPromotion),
                 }
             },
             { // White, pawn captures, pinned or not.
@@ -286,13 +286,13 @@ TEST_CASE(
                 "rnbqkbnr/ppp1pppp/8/2Pp4/8/8/8/RNBQKBNR w KQkq d6 0 1",
                 {
                     Move(Square::C5,Square::C6),
-                    Move(Square::C5,Square::D6, PromotionPieceType::kKnight, MoveType::kEnPassant),
+                    Move(Square::C5,Square::D6, PromPieceType::kKnight, MoveType::kEnPassant),
                 }
             },
             { // Black en passant 
                 "nqrkbbnr/8/8/8/6Pp/8/PPPPPP1P/NQRKBBNR b - g3 0 1",
                 {
-                    Move(Square::H4, Square::G3, PromotionPieceType::kKnight, MoveType::kEnPassant),
+                    Move(Square::H4, Square::G3, PromPieceType::kKnight, MoveType::kEnPassant),
                     Move(Square::H4, Square::H3),
                 }
             },
@@ -555,7 +555,7 @@ TEST_CASE(
                 {
                     Move(Square::E1, Square::D1),
                     Move(Square::E1, Square::F1),
-                    Move(Square::E1, Square::G1, PromotionPieceType::kKnight, MoveType::kCastling),
+                    Move(Square::E1, Square::G1, PromPieceType::kKnight, MoveType::kCastling),
                 }
             },
             { // Black, can't castle bcs of piece attacks or non empty squares.
@@ -663,14 +663,14 @@ TEST_CASE(
         { // Capture and promotions.
             "8/6P1/3k4/6BK/8/4b3/pp6/6r1 b - - 0 1",
             {
-                Move(Square::A2, Square::A1, PromotionPieceType::kKnight, MoveType::kPromotion),
-                Move(Square::A2, Square::A1, PromotionPieceType::kBishop, MoveType::kPromotion),
-                Move(Square::A2, Square::A1, PromotionPieceType::kRook, MoveType::kPromotion),
-                Move(Square::A2, Square::A1, PromotionPieceType::kQueen, MoveType::kPromotion),
-                Move(Square::B2, Square::B1, PromotionPieceType::kKnight, MoveType::kPromotion),
-                Move(Square::B2, Square::B1, PromotionPieceType::kBishop, MoveType::kPromotion),
-                Move(Square::B2, Square::B1, PromotionPieceType::kRook, MoveType::kPromotion),
-                Move(Square::B2, Square::B1, PromotionPieceType::kQueen, MoveType::kPromotion),
+                Move(Square::A2, Square::A1, PromPieceType::kKnight, MoveType::kPromotion),
+                Move(Square::A2, Square::A1, PromPieceType::kBishop, MoveType::kPromotion),
+                Move(Square::A2, Square::A1, PromPieceType::kRook, MoveType::kPromotion),
+                Move(Square::A2, Square::A1, PromPieceType::kQueen, MoveType::kPromotion),
+                Move(Square::B2, Square::B1, PromPieceType::kKnight, MoveType::kPromotion),
+                Move(Square::B2, Square::B1, PromPieceType::kBishop, MoveType::kPromotion),
+                Move(Square::B2, Square::B1, PromPieceType::kRook, MoveType::kPromotion),
+                Move(Square::B2, Square::B1, PromPieceType::kQueen, MoveType::kPromotion),
                 Move(Square::E3, Square::G5),
                 Move(Square::G1, Square::G5)
             }   
@@ -678,10 +678,10 @@ TEST_CASE(
         { // Promotion to get out of check.
             "8/6P1/8/7K/8/4k3/pp6/2B3r1 b - - 0 1",
             {
-                Move(Square::B2, Square::C1, PromotionPieceType::kKnight, MoveType::kPromotion),
-                Move(Square::B2, Square::C1, PromotionPieceType::kBishop, MoveType::kPromotion),
-                Move(Square::B2, Square::C1, PromotionPieceType::kRook, MoveType::kPromotion),
-                Move(Square::B2, Square::C1, PromotionPieceType::kQueen, MoveType::kPromotion),
+                Move(Square::B2, Square::C1, PromPieceType::kKnight, MoveType::kPromotion),
+                Move(Square::B2, Square::C1, PromPieceType::kBishop, MoveType::kPromotion),
+                Move(Square::B2, Square::C1, PromPieceType::kRook, MoveType::kPromotion),
+                Move(Square::B2, Square::C1, PromPieceType::kQueen, MoveType::kPromotion),
                 Move(Square::G1, Square::C1)
             }
         }

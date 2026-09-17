@@ -23,14 +23,13 @@ namespace lightknight::search {
         int scores[kNumColors][kNumSquares][kNumSquares]{};
 
         inline void Update(const Move& move, Color color, int value) {
-            const int history = this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()];
-            
-            this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()] += 
+            const int history = scores[color][move.OriginSquare()][move.DestSquare()];
+            scores[color][move.OriginSquare()][move.DestSquare()] += 
                 value - history * std::abs(value) / kMaxHistoryScore;
         }
         
         inline int Get(const Move& move, Color color) const {
-            return this->scores[color][move.GetOriginSquare()][move.GetDestinationSquare()];
+            return scores[color][move.OriginSquare()][move.DestSquare()];
         }
     };
 

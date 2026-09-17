@@ -40,7 +40,7 @@ namespace lightknight {
     }
 
     // Zobrist hashes generated at compile time.
-    static constexpr ZobristHashes zobrists = GenerateZobristHashes(0x42ull);
+    static constexpr ZobristHashes kZobrists = GenerateZobristHashes(0x42ull);
 } // namespace lightknight
 
 #endif // LIGHTKNIGHT_ZOBRIST_H

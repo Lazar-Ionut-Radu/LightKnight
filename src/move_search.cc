@@ -301,7 +301,8 @@ namespace lightknight::search {
             // Pick the best remaining move.
             // That move gets moved at the end of the moves vector and num_moves is decremented.
             const Move move = PickMove(moves, scores, num_moves);
-
+            assert(move.IsCapture() == board.IsCapture(move));
+            
             // Prepare the needed stuff for {Make | Unamake}Move()
             int score;
             UndoMoveInfo undo{};
@@ -356,7 +357,7 @@ namespace lightknight::search {
                 
                 // History heuristic:
                 // History score bonus for quiet moves that cause a cutoff.
-                bool is_quiet = !board.IsCapture(move) && !move.IsPromotion();
+                bool is_quiet = !move.IsCapture() && !move.IsPromotion();
                 int history_bonus = depth * depth;
                 if (is_quiet)
                     history.Update(move, board.turn, history_bonus);
@@ -366,7 +367,7 @@ namespace lightknight::search {
                 // currently picked move (that caused a cutoff) and the moves after that are the
                 // previously searched moves. 
                 for (size_t i = num_moves + 1; i < initial_num_moves; ++i) {
-                    if (!board.IsCapture(moves[i]) && !moves[i].IsPromotion())
+                    if (!moves[i].IsCapture() && !moves[i].IsPromotion())
                         history.Update(moves[i], board.turn, -history_bonus / 2);
                 }
                 

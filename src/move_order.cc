@@ -15,7 +15,7 @@ namespace lightknight::search {
         if (tt_entry && move == tt_entry->move)
             return kTTMoveScore;
 
-        const bool is_capture = board.IsCapture(move);
+        const bool is_capture = move.IsCapture();
 
         // Queen promotions, sorted by captured piece.
         if (move.IsQueenPromotion()) {
@@ -52,7 +52,7 @@ namespace lightknight::search {
 
         // Underpromotions that are not captures, sorted by promotion piece type.
         if (move.IsUnderpromotion()) {
-            const int prom_idx = static_cast<int>(move.GetPromotedPiece(Color::kWhite));
+            const int prom_idx = static_cast<int>(move.PromPiece(Color::kWhite));
             return kUnderpromotionBase + prom_idx;
         }
 
@@ -82,7 +82,7 @@ namespace lightknight::search {
         if (tt_entry && move == tt_entry->move)
             return kTTMoveScore;
 
-        const bool is_capture = board.IsCapture(move);
+        const bool is_capture = move.IsCapture();
 
         // Queen promotions, sorted by captured piece.
         if (move.IsQueenPromotion()) {
@@ -120,7 +120,7 @@ namespace lightknight::search {
 
         // Underpromotions that are not captures, sorted by promotion piece type.
         if (move.IsUnderpromotion()) {
-            const int prom_idx = static_cast<int>(move.GetPromotedPiece(Color::kWhite));
+            const int prom_idx = static_cast<int>(move.PromPiece(Color::kWhite));
             return kUnderpromotionBase + prom_idx;
         }
 

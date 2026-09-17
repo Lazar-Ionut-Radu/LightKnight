@@ -8,3 +8,6 @@ build/
 *.csv
 *.pyc
 *.pgn
+
+# Debug stuff
+callgrind.out.*

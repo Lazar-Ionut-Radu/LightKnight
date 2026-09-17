@@ -134,13 +134,13 @@ namespace lightknight::movegen {
                 if (from_bb & precomputed_info.pin_info.pinned_bb) {
                     const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
                     if (pin_line_bb & to_bb) {
-                        moves.push_back(Move(from_sq, to_sq));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, false));
                         move_count++;
                     }
                 } 
                 // Non pinned
                 else {
-                    moves.push_back(Move(from_sq, to_sq));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, false));
                     move_count++;
                 }
             }
@@ -158,13 +158,13 @@ namespace lightknight::movegen {
                 if (from_bb & precomputed_info.pin_info.pinned_bb) {
                     const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
                     if (pin_line_bb & to_bb) {
-                        moves.push_back(Move(from_sq, to_sq));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, false));
                         move_count++;
                     }
                 } 
                 // Non pinned
                 else {
-                    moves.push_back(Move(from_sq, to_sq));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, false));
                     move_count++;
                 }
             }
@@ -184,26 +184,26 @@ namespace lightknight::movegen {
                 if (from_bb & precomputed_info.pin_info.pinned_bb) {
                     const uint64_t pin_line_bb = kLineBB[own_king_sq][from_sq];
                     if (pin_line_bb & to_bb) {
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, false));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, false));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, false));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, false));
                         move_count += 4;
                     }
                 }
                 // Non Pinned
                 else {
-                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                    moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, false));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, false));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, false));
+                    moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, false));
                     move_count += 4;                
                 }
             }
         }
     
         // ----- Capture Moves -----
-        if (type != MoveGenType::kQuiet) {        
+        if (type != MoveGenType::kQuiet) {
             // TODO: 
             // Here we have a possible improvement: when in check, only pawn captures are of the checking piece.
             // So at most 2. If not pinned otherwise.
@@ -226,15 +226,15 @@ namespace lightknight::movegen {
                     if (pin_line_bb & to_bb) {
                         // Promotion
                         if (is_promotion) {
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, true));
                             move_count += 4;
                         }
                         // Non promotion
                         else {
-                            moves.push_back(Move(from_sq, to_sq));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, true));
                             move_count++;
                         }
                     }
@@ -243,15 +243,15 @@ namespace lightknight::movegen {
                 else {
                     // Promotion
                     if (is_promotion) {
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, true));
                         move_count += 4;
                     }
                     // Non promotion
                     else {
-                        moves.push_back(Move(from_sq, to_sq));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, true));
                         move_count++;
                     }
                 }
@@ -275,15 +275,15 @@ namespace lightknight::movegen {
                     if (pin_line_bb & to_bb) {
                         // Promotion
                         if (is_promotion) {
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                            moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, true));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, true));
                             move_count += 4;
                         }
                         // Non promotion
                         else {
-                            moves.push_back(Move(from_sq, to_sq));
+                            moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, true));
                             move_count++;
                         }
                     }
@@ -292,15 +292,15 @@ namespace lightknight::movegen {
                 else {
                     // Promotion
                     if (is_promotion) {
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kBishop, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kRook, MoveType::kPromotion));
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kQueen, MoveType::kPromotion));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kBishop, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kRook, MoveType::kPromotion, true));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kQueen, MoveType::kPromotion, true));
                         move_count += 4;
                     }
                     // Non promotion
                     else {
-                        moves.push_back(Move(from_sq, to_sq));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, true));
                         move_count++;
                     }
                 }
@@ -340,7 +340,7 @@ namespace lightknight::movegen {
                         const Square from_sq = BitboardToSquare(from_bb);
                         const Square to_sq = BitboardToSquare(to_bb);
 
-                        moves.push_back(Move(from_sq, to_sq, PromotionPieceType::kKnight, MoveType::kEnPassant));
+                        moves.push_back(Move(from_sq, to_sq, PromPieceType::kKnight, MoveType::kEnPassant, true));
                         move_count++;
                     }
 
@@ -399,15 +399,16 @@ namespace lightknight::movegen {
         candidate_to_bb &= capture_block_bb;
 
         // Non pinned knight moves
-        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteKnight + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {\
+        for (uint64_t bb = board.piece_bitboards[Piece::kWhiteKnight + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
             const Square sq = LSBSquare(bb);
             uint64_t to_bb = kKnightAttacksBB[sq] & candidate_to_bb;
 
             while (to_bb) {
                 uint64_t to_sq_bb = LSB(to_bb);
                 const Square to_sq = BitboardToSquare(to_sq_bb);
+                const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
 
-                moves.push_back(Move(sq, to_sq));
+                moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                 move_count++;
 
                 to_bb &= ~to_sq_bb;
@@ -474,8 +475,9 @@ namespace lightknight::movegen {
             while (to_bb) {
                 uint64_t to_sq_bb = LSB(to_bb);
                 const Square to_sq = BitboardToSquare(to_sq_bb);
+                const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
 
-                moves.push_back(Move(sq, to_sq));
+                moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                 move_count++;
 
                 to_bb &= ~to_sq_bb;
@@ -493,8 +495,9 @@ namespace lightknight::movegen {
                 while (to_bb) {
                     uint64_t to_sq_bb = LSB(to_bb);
                     const Square to_sq = BitboardToSquare(to_sq_bb);
-
-                    moves.push_back(Move(sq, to_sq));
+                    const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
+                    
+                    moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                     move_count++;
 
                     to_bb &= ~to_sq_bb;
@@ -553,7 +556,7 @@ namespace lightknight::movegen {
         
         const uint64_t blockers = ~board.piece_bitboards[Piece::kEmpty];
 
-        // Non pinned bishop moves.
+        // Non pinned rook moves.
         for (uint64_t bb = board.piece_bitboards[Piece::kWhiteRook + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
             const Square sq = LSBSquare(bb);
             uint64_t to_bb = RookAttackBB(sq, blockers) & candidate_to_bb;
@@ -561,16 +564,17 @@ namespace lightknight::movegen {
             while (to_bb) {
                 uint64_t to_sq_bb = LSB(to_bb);
                 const Square to_sq = BitboardToSquare(to_sq_bb);
+                const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
 
-                moves.push_back(Move(sq, to_sq));
+                moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                 move_count++;
 
                 to_bb &= ~to_sq_bb;
             }
         }
 
-        // Pinned bishop moves.
-        // Pinned bishops may move only if their king is not in check.
+        // Pinned rook moves.
+        // Pinned rooks may move only if their king is not in check.
         if (num_checkers == 0) {
             for (uint64_t bb = board.piece_bitboards[Piece::kWhiteRook + 6*my_color] & precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
                 const Square sq = LSBSquare(bb);
@@ -580,8 +584,9 @@ namespace lightknight::movegen {
                 while (to_bb) {
                     uint64_t to_sq_bb = LSB(to_bb);
                     const Square to_sq = BitboardToSquare(to_sq_bb);
+                    const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
 
-                    moves.push_back(Move(sq, to_sq));
+                    moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                     move_count++;
 
                     to_bb &= ~to_sq_bb;
@@ -640,7 +645,7 @@ namespace lightknight::movegen {
         
         const uint64_t blockers = ~board.piece_bitboards[Piece::kEmpty];
 
-        // Non pinned bishop moves.
+        // Non pinned queen moves.
         for (uint64_t bb = board.piece_bitboards[Piece::kWhiteQueen + 6*my_color] & ~precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
             const Square sq = LSBSquare(bb);
             uint64_t to_bb = QueenAttackBB(sq, blockers) & candidate_to_bb;
@@ -648,16 +653,17 @@ namespace lightknight::movegen {
             while (to_bb) {
                 uint64_t to_sq_bb = LSB(to_bb);
                 const Square to_sq = BitboardToSquare(to_sq_bb);
-
-                moves.push_back(Move(sq, to_sq));
+                const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
+                
+                moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                 move_count++;
 
                 to_bb &= ~to_sq_bb;
             }
         }
 
-        // Pinned bishop moves.
-        // Pinned bishops may move only if their king is not in check.
+        // Pinned queen moves.
+        // Pinned queens may move only if their king is not in check.
         if (num_checkers == 0) {
             for (uint64_t bb = board.piece_bitboards[Piece::kWhiteQueen + 6*my_color] & precomputed_info.pin_info.pinned_bb; bb; bb &= ~LSB(bb)) {
                 const Square sq = LSBSquare(bb);
@@ -667,8 +673,9 @@ namespace lightknight::movegen {
                 while (to_bb) {
                     uint64_t to_sq_bb = LSB(to_bb);
                     const Square to_sq = BitboardToSquare(to_sq_bb);
-
-                    moves.push_back(Move(sq, to_sq));
+                    const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
+                    
+                    moves.push_back(Move(sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
                     move_count++;
 
                     to_bb &= ~to_sq_bb;
@@ -705,8 +712,9 @@ namespace lightknight::movegen {
         while (to_bb) {
             uint64_t to_sq_bb = LSB(to_bb);
             Square to_sq = BitboardToSquare(to_sq_bb);
+            const bool is_capture = to_sq_bb & board.color_bitboards[enemy_color];
 
-            moves.push_back(Move(own_king_sq, to_sq));
+            moves.push_back(Move(own_king_sq, to_sq, PromPieceType::kKnight, MoveType::kNormal, is_capture));
             move_count++;
 
             to_bb &= ~to_sq_bb;
@@ -735,7 +743,7 @@ namespace lightknight::movegen {
                 // As such, this castle is legal.
                 Square origin_sq = BitboardToSquare(kCastleInfo[current_castle].king_origin);
                 Square dest_sq = BitboardToSquare(kCastleInfo[current_castle].king_destination);
-                moves.push_back(Move(origin_sq, dest_sq, PromotionPieceType::kKnight, MoveType::kCastling));
+                moves.push_back(Move(origin_sq, dest_sq, PromPieceType::kKnight, MoveType::kCastling, false));
                 move_count++;
 
                 // Pop LSB
