@@ -1,12 +1,12 @@
 # LightKnight
 
 LightKnight is an open-source UCI chess engine written in C++ as a hobby project.
-___
 
-The first time I tried my hand at chess programming was during my second year in university, a homework project about making a crazyhouse chess engine. Back then, I managed to put together something functional, even if it was quite bad at its job. It turns out that browsing the [Chess Programming Wiki](https://chessprogramming.org/) was interesting enough for me to try again ~$3$ year later, this time hopefully stronger, so here we are.
+---
 
-In the beginning, my goal was just to make something that can beat me at chess. It turned out I might've been too confident in my chess abilities, I got wiped out by a minimal set of features, so there's that. From now on I will try to improve it as much as possible, working on it when I've got the time and desire, as a hobby. 
+The first time I tried my hand at chess programming was during my second year in university, a homework project about making a crazyhouse chess engine. Back then, I managed to put together something functional, even if it was quite bad at its job. It turns out that browsing the [Chess Programming Wiki](https://chessprogramming.org/) was interesting enough for me to try again ~3 year later, this time hopefully stronger.
 
+In the beginning, my goal was just to make something that can beat me at chess. It turned out I might've been too confident in my chess abilities, I got wiped out by a minimal set of features, so there's that. From now on I will try to improve it as much as possible, working on it whenever I've got the time and desire, as a hobby. 
 
 ## Features
 Here is a summary of what I have yet implemented, that covers both algorithms, heuristics, choises regarding LightKnight's ability to play chess, as well as the subset of supported UCI features,
