@@ -2,20 +2,21 @@
 
 All notable changes to LightKnight are documented in this file.
 
-## Unreleased
+## [0.4.3] - 2026-09-17
 
 ### Added
 - Pawn Hashtable to score pawn evaluations. 
 - Zobrist hash only for pawns + en passant.
-- Functions that compute bitboard of pinned / pinner pieces: Board::GetAbsilutePinInfo(), compute bitboard of pieces that attack a particular square Board::IsSquareAttacked() and bitboard of squares defended by the pieces of a player Board::DefendedBB(). Not the best names.
+- Functions that compute bitboard of pinned / pinner pieces: Board::GetAbsolutePinInfo(), compute bitboard of pieces that attack a particular square Board::IsSquareAttacked() and bitboard of squares defended by the pieces of a player Board::DefendedBB(). Not the best names.
 
 ### Changed
 - Forward Fill bitboards used for pawn evaluation are computed now at compile time.
 - Attack bitboards of pieces, along with magic bitboards code is now placed in types.h, where the other bitboard related functions are placed.
 - Legal move generation rewritten, making use of bitboards of pinned / pinner bitboards, so that we don't explicitly test that the king is left in check.
 - A move is now represented with 32 bits, it also stores if it was a capture or not to avoid too many calls to IsCapture() during move ordering. Also, many of its functions were renamed.
+- Evaluation helper functions now return a pair of integers, midgame and endgame values, removing some code that ran twice needlessly.
 
-## [0.4.2]
+## [0.4.2] - 2026-08-18
 
 ### Fixed
 - History heuristic bug where history scores would get so big causing them to be picked first. Changed the formula for updating scores and bounded them.

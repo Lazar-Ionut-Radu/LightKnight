@@ -1,10 +1,12 @@
 # LightKnight
 
-LightKnight is a UCI chess engine written in C++. 
+LightKnight is an open-source UCI chess engine written in C++ as a hobby project.
+___
 
-I started the development of this engine only because of my interest in the subject, to get acquainted with the the algorithms, micro-optimizations and heuristics involved. This is a learning experience, and it becomes kind of a rabbit-hole once you get into it.
+The first time I tried my hand at chess programming was during my second year in university, a homework project about making a crazyhouse chess engine. Back then, I managed to put together something functional, even if it was quite bad at its job. It turns out that browsing the [Chess Programming Wiki](https://chessprogramming.org/) was interesting enough for me to try again ~$3$ year later, this time hopefully stronger, so here we are.
 
-In the beginning my goal was just to make something that can beat me at chess. It turns out that's not a hard task at all, so now I will try to make it as good as I can. We'll see how much I can improve it, however it's just a hobby project, thus the "Light" in its name.
+In the beginning, my goal was just to make something that can beat me at chess. It turned out I might've been too confident in my chess abilities, I got wiped out by a minimal set of features, so there's that. From now on I will try to improve it as much as possible, working on it when I've got the time and desire, as a hobby. 
+
 
 ## Features
 Here is a summary of what I have yet implemented, that covers both algorithms, heuristics, choises regarding LightKnight's ability to play chess, as well as the subset of supported UCI features,
@@ -92,6 +94,7 @@ To make the results more tangible, here's a more intuitive way to put it:
 | v0.4.0 | Eval function additions | 60+0.6 | 113.08 ± 23.46| 232 / 209 / 71 |
 | v0.4.1 | History heuristic | 60+0.6 | 63.83 ± 19.29 | 233 / 295 / 116 |
 | v0.4.2 | Killer heuristic. Fixed History heuristic :) | 60+0.6 | 88.37 ± 21.67 | 199 / 224 / 75 |
+| v0.4.3 | Pawn hash + other speed optimisations | 60+0.6 | 57.49 ± 18.55 | 270 / 326 / 148 |
 
 ## Known Issues
 * <b><span style="color:green">[Solved in v0.3.3]</span></b> Zobrist Hashing and En Passant: Two positions being "the same" implies that the possibility of en passant capture is the same. My en passant square variable is being set whenever a pawn double move takes place, regardless of it being possible. That leads to extremely rare situations where a three-fold repetition is missed. It does also affect (most likely in no measurable way) some TT hits.
